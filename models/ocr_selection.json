@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "mode": "numeric_cascade",
+  "scope": "Selection on development audit, not independent final evaluation",
+  "baseline_fields": 0.9722222222222222,
+  "candidate_fields": 0.9920634920634921,
+  "baseline_cards": 0.8333333333333334,
+  "candidate_cards": 0.9444444444444444,
+  "reason": "Candidate improves fields without degrading card exact match",
+  "sha256": "02dff20088060fbc5a264d1d13a2df6a9346d0010a4c56b51ed46dd36275149f"
+}

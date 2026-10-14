@@ -1,0 +1,3 @@
+# Experimental native FP32 language LoRA v4
+
+192 original fictional fullpages, one train-only pass /96steps, language q/v rank8, frozen vision/headv3. Local experiment with optional study-prose and logical-empty-label serialization; raw line regression retained in qualification. Two new fictional test names and one validation university improved; fullkit fields unchanged277PNG/276PDF, still3/4 losses vs legacy. Full production replacement NOT qualified. Base PaddleOCR-VL-1.6 Apache-2.0 separately required; project adapter/code/data AGPL-3.0. Checkpoints48/96 preserved; see UNIFIED_LITERAL_VALUES_FP32_TRAINING.

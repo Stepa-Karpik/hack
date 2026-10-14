@@ -1,0 +1,1 @@
+Experimental language-only FP32+1MP OCR LoRA, native PaddleOCR-VL1.6. Training64 original fictional fullpages. Base Apache-2.0; project study AGPL-3.0. Vision/headv3 frozen. Not qualified for production; literal/fullkit/CPU/real/multipage/geometry gates remain required. Checkpoints40/80 and all prior weights preserved.

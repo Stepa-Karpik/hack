@@ -1,0 +1,10 @@
+{
+ "thresholds": {
+  "signature_present": 0.94,
+  "seal_present": 0.94
+ },
+ "rule": {
+  "signature_present": "patch",
+  "seal_present": "patch"
+ }
+}

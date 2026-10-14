@@ -1,0 +1,320 @@
+{
+ "chosen": {
+  "thresholds": {
+   "signature_present": 0.94,
+   "seal_present": 0.94
+  },
+  "rule": {
+   "signature_present": "patch",
+   "seal_present": "patch"
+  }
+ },
+ "groups": {
+  "kit:pdf": {
+   "signature_present": {
+    "new": {
+     "tp": 25,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 25,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    }
+   },
+   "seal_present": {
+    "new": {
+     "tp": 16,
+     "fp": 0,
+     "fn": 0,
+     "tn": 4,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 16,
+     "fp": 0,
+     "fn": 0,
+     "tn": 4,
+     "errors": 0
+    }
+   }
+  },
+  "kit:png": {
+   "signature_present": {
+    "new": {
+     "tp": 25,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 25,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    }
+   },
+   "seal_present": {
+    "new": {
+     "tp": 16,
+     "fp": 0,
+     "fn": 0,
+     "tn": 4,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 16,
+     "fp": 0,
+     "fn": 0,
+     "tn": 4,
+     "errors": 0
+    }
+   }
+  },
+  "marks-v1/data:test": {
+   "signature_present": {
+    "new": {
+     "tp": 40,
+     "fp": 0,
+     "fn": 0,
+     "tn": 20,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 22,
+     "fp": 4,
+     "fn": 18,
+     "tn": 16,
+     "errors": 22
+    }
+   },
+   "seal_present": {
+    "new": {
+     "tp": 33,
+     "fp": 1,
+     "fn": 0,
+     "tn": 26,
+     "errors": 1
+    },
+    "old_global_head": {
+     "tp": 33,
+     "fp": 26,
+     "fn": 0,
+     "tn": 1,
+     "errors": 26
+    }
+   }
+  },
+  "marks-v1/data:val": {
+   "signature_present": {
+    "new": {
+     "tp": 37,
+     "fp": 1,
+     "fn": 0,
+     "tn": 22,
+     "errors": 1
+    },
+    "old_global_head": {
+     "tp": 16,
+     "fp": 9,
+     "fn": 21,
+     "tn": 14,
+     "errors": 30
+    }
+   },
+   "seal_present": {
+    "new": {
+     "tp": 30,
+     "fp": 0,
+     "fn": 0,
+     "tn": 30,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 30,
+     "fp": 30,
+     "fn": 0,
+     "tn": 0,
+     "errors": 30
+    }
+   }
+  },
+  "realistic": {
+   "signature_present": {
+    "new": {
+     "tp": 5,
+     "fp": 0,
+     "fn": 0,
+     "tn": 2,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 1,
+     "fp": 0,
+     "fn": 4,
+     "tn": 2,
+     "errors": 4
+    }
+   },
+   "seal_present": {
+    "new": {
+     "tp": 2,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 2,
+     "fp": 5,
+     "fn": 0,
+     "tn": 0,
+     "errors": 5
+    }
+   }
+  },
+  "unified-data-v2:test": {
+   "signature_present": {
+    "new": {
+     "tp": 5,
+     "fp": 0,
+     "fn": 0,
+     "tn": 7,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 5,
+     "fp": 0,
+     "fn": 0,
+     "tn": 7,
+     "errors": 0
+    }
+   },
+   "seal_present": {
+    "new": {
+     "tp": 3,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 3,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    }
+   }
+  },
+  "unified-data-v2:val": {
+   "signature_present": {
+    "new": {
+     "tp": 8,
+     "fp": 0,
+     "fn": 0,
+     "tn": 4,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 8,
+     "fp": 0,
+     "fn": 0,
+     "tn": 4,
+     "errors": 0
+    }
+   },
+   "seal_present": {
+    "new": {
+     "tp": 5,
+     "fp": 0,
+     "fn": 0,
+     "tn": 3,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 5,
+     "fp": 0,
+     "fn": 0,
+     "tn": 3,
+     "errors": 0
+    }
+   }
+  },
+  "unified-real-marks-v1:test": {
+   "signature_present": {
+    "new": {
+     "tp": 12,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 12,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    }
+   },
+   "seal_present": {
+    "new": {
+     "tp": 7,
+     "fp": 0,
+     "fn": 0,
+     "tn": 4,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 7,
+     "fp": 0,
+     "fn": 0,
+     "tn": 4,
+     "errors": 0
+    }
+   }
+  },
+  "unified-real-marks-v1:val": {
+   "signature_present": {
+    "new": {
+     "tp": 13,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 13,
+     "fp": 0,
+     "fn": 0,
+     "tn": 5,
+     "errors": 0
+    }
+   },
+   "seal_present": {
+    "new": {
+     "tp": 5,
+     "fp": 0,
+     "fn": 0,
+     "tn": 7,
+     "errors": 0
+    },
+    "old_global_head": {
+     "tp": 5,
+     "fp": 1,
+     "fn": 0,
+     "tn": 6,
+     "errors": 1
+    }
+   }
+  }
+ }
+}

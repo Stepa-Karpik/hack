@@ -1,0 +1,69 @@
+{
+  "format": "one-backbone-graphic-readout-v1",
+  "dimension": 20736,
+  "architecture": "same native Paddle vision encoder + existing OCR decoder + linear graphic readout",
+  "pooling": "preprojector 3x3 mean/max",
+  "base": "PaddlePaddle/PaddleOCR-VL-1.6",
+  "base_revision": "c5630abae1d940eafe0697512a0325494b02ab42",
+  "base_weight_sha256": "85a479d506a11e724e7285d395c551be69f41dbc16b6342d3cacfb189aed71db",
+  "feature_manifest_sha256": "5c54a3b5aaaee199e4f2831b014811d64402e59598eba0cfdb328c30ac0d57d9",
+  "training_annotation_sha256": "05b082f834b0e7b4944aa6c88019039ba351f882d1d4a383d19e142497edbd28",
+  "train_count": 120,
+  "trainable_parameters": 41474,
+  "backbone_frozen": true,
+  "steps": 200,
+  "optimizer": "AdamW",
+  "lr": 0.003,
+  "weight_decay": 0.1,
+  "train_only_standardization": true,
+  "seed": 42,
+  "threshold_fixed": 0.5,
+  "score_calibrated": false,
+  "history": [
+    {
+      "step": 1,
+      "loss": 0.6616812944412231
+    },
+    {
+      "step": 21,
+      "loss": 3.1494389531872002e-06
+    },
+    {
+      "step": 41,
+      "loss": 1.4925848290658905e-06
+    },
+    {
+      "step": 61,
+      "loss": 6.114398161116696e-07
+    },
+    {
+      "step": 81,
+      "loss": 3.829801187293924e-07
+    },
+    {
+      "step": 101,
+      "loss": 2.87087033257194e-07
+    },
+    {
+      "step": 121,
+      "loss": 2.363461248933163e-07
+    },
+    {
+      "step": 141,
+      "loss": 1.9933897021928715e-07
+    },
+    {
+      "step": 161,
+      "loss": 1.6730221830130176e-07
+    },
+    {
+      "step": 181,
+      "loss": 1.479225204548129e-07
+    },
+    {
+      "step": 200,
+      "loss": 1.310095143480794e-07
+    }
+  ],
+  "promoted": false
+}
