@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0b0d">
+<title>Онлайн-деканат</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%237c6cff'/%3E%3Cpath d='M10 9h8l4 4v10a1 1 0 0 1-1 1H10a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1z' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='m12.5 17.5 2.2 2.2 4.3-4.6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/vendor/notyf.min.css">
+<link rel="stylesheet" href="/assets/app.css">
+<script src="/assets/js/theme.js"></script>
+</head>
+<body>
+<header class="topbar" id="topbar">
+  <a class="brand" href="/" data-link><span class="brand-mark"><i data-lucide="file-check-2"></i></span><span>Онлайн-деканат</span></a>
+  <nav class="nav" id="nav">
+    <a href="/" data-link data-nav="/">Проверка</a>
+    <a href="/history" data-link data-nav="/history">История</a>
+    <a href="/docs" data-link data-nav="/docs">Документация</a>
+  </nav>
+  <div class="spacer"></div>
+  <div id="topbar-right" class="row"></div>
+</header>
+<main id="app"></main>
+<input type="file" id="global-file" accept=".pdf,.png,.jpg,.jpeg" multiple hidden>
+<script src="/assets/vendor/lucide.min.js"></script>
+<script src="/assets/vendor/notyf.min.js"></script>
+<script type="module" src="/assets/js/main.js"></script>
+</body>
+</html>

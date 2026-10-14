@@ -1,0 +1,86 @@
+import { h, icon, refreshIcons } from '../ui.js';
+
+const origin = location.origin;
+const PAGES = {
+  '': ['Обзор', `
+<h1>Как работает Онлайн-деканат</h1>
+<p>Сервис предварительно проверяет три типа студенческих документов: справку об обучении, заявление на академический отпуск и справку о практике. Он читает документ, находит поля, подпись и печать и сверяет комплектность с Положением. Окончательное решение принимает сотрудник деканата.</p>
+<h2>Быстрый старт</h2>
+<ol><li>Загрузите один или несколько файлов (PDF, JPG, PNG до 10 МБ) на главной или кнопкой «Загрузить». Тип можно не выбирать — модель определит его по заголовку.</li>
+<li>Каждый документ получает постоянную ссылку вида <code>/check/aot3515lh-151g115-f12gs</code>. Несколько файлов обрабатываются в фоне — вы получите уведомление, когда всё готово.</li>
+<li>На странице документа сверьте поля с оригиналом: отметка <b>«Проверьте»</b> стоит только там, где модель не уверена. Галочкой отмечайте сверенные поля, затем нажмите <b>«Одобрить»</b>.</li>
+<li>Задайте вопрос ассистенту — он отвечает по документу и Положению и показывает источник ответа.</li></ol>
+<h2>Распознавание</h2>
+<p>Одна модель PaddleOCR-VL 1.6 с дообученным адаптером читает текст, отдельная голова на тех же признаках определяет подпись и печать. Обработка идёт локально на видеокарте; документы не отправляются во внешние сервисы. Разметка полей на странице строится той же моделью в фоне через несколько секунд после результата.</p>
+<h2>Ограничения</h2>
+<ul><li>Поддерживается одностраничный документ; многостраничный PDF отклоняется сразу.</li><li>Рукописный текст полей не распознаётся надёжно.</li><li>Подпись и печать определяются по изображению; подлинность не проверяется (п. 2.3 Положения).</li></ul>`],
+  statuses: ['Статусы', `
+<h1>Статусы документов</h1>
+<table><tr><th>Статус</th><th>Что означает</th></tr>
+<tr><td>В очереди / Распознаётся</td><td>Документ ждёт или проходит распознавание (обычно 5–10 секунд на страницу).</td></tr>
+<tr><td><code>9/10</code></td><td>Найдено 9 из 10 обязательных сведений — чего-то не хватает, документ требует внимания.</td></tr>
+<tr><td>Соответствует</td><td>Найдены все обязательные сведения и отметки (10/10).</td></tr>
+<tr><td>Одобрен</td><td>Документ проверен вручную и одобрен пользователем.</td></tr>
+<tr><td>Одобрен автоматически</td><td>Включено «Авто-подтверждение открытых документов», и при открытии все сведения были найдены.</td></tr>
+<tr><td>Ошибка</td><td>Файл не удалось прочитать (например, многостраничный PDF).</td></tr></table>
+<h2>Отметка «Проверьте»</h2>
+<p>Для каждого значения сервис берёт уверенность модели по каждому символу значения. Если минимальная уверенность ниже порога или прочтения противоречат друг другу, поле помечается «Проверьте». Для подписи и печати «Проверьте вручную» появляется, когда в тексте есть место для отметки («(подпись)», «М.П.»), а модель отметку не нашла.</p>`],
+  api: ['API', `
+<h1>API для интеграций</h1>
+<p>Сторонние сервисы могут загружать документы и получать результаты проверки. Создайте ключ в <a href="/profile/api" data-link>Профиль → API-ключи</a> и передавайте его в заголовке:</p>
+<pre><code>Authorization: Bearer dk_live_…</code></pre>
+<p>Базовый адрес: <code>${origin}/api/v1</code>. Все ответы — JSON в UTF-8; ошибки содержат поля <code>error</code> (код) и <code>message</code> (текст на русском).</p>
+<h2>Загрузить документы</h2>
+<p><span class="method post">POST</span><code>/api/v1/documents</code> — multipart/form-data, поля <code>files</code> (один или несколько файлов) и <code>document_type</code>: <code>auto</code>, <code>study_certificate</code>, <code>academic_leave_application</code> или <code>internship_certificate</code>.</p>
+<pre><code>curl -X POST ${origin}/api/v1/documents \\
+  -H "Authorization: Bearer $DEKANAT_KEY" \\
+  -F document_type=auto -F files=@spravka.pdf</code></pre>
+<pre><code>{"documents": [{"slug": "aot3515lh-151g115-f12gs", "status": "queued", "url": "/check/aot3515lh-151g115-f12gs", ...}],
+ "rejected": []}</code></pre>
+<h2>Получить результат</h2>
+<p><span class="method get">GET</span><code>/api/v1/documents/{slug}</code> — статус и, когда <code>status = done</code>, результат: поля, проверка комплектности, уверенность и отметки «проверьте».</p>
+<pre><code>curl ${origin}/api/v1/documents/aot3515lh-151g115-f12gs -H "Authorization: Bearer $DEKANAT_KEY"</code></pre>
+<pre><code>{"status": "done", "found": 9, "total": 10, "valid": false, "approved": false,
+ "analysis": {"document_type": "study_certificate",
+   "fields": {"student_name": "Иванов Алексей Петрович", "issue_date": "2026-10-08", "signature_present": false, ...},
+   "validation": {"status": "missing_fields", "missing_fields": ["signature_present"], "sources": ["rule:3.2"]},
+   "review": {"student_name": false, ...}, "confidence": {...}}}</code></pre>
+<p>Опрашивайте раз в 1–2 секунды, пока статус <code>queued</code> или <code>running</code>.</p>
+<h2>Другие методы</h2>
+<table><tr><th>Метод</th><th>Описание</th></tr>
+<tr><td><span class="method get">GET</span><code>/api/v1/documents</code></td><td>Список документов аккаунта (история).</td></tr>
+<tr><td><span class="method post">POST</span><code>/api/v1/documents/{slug}/chat?stream=0</code></td><td>Вопрос ассистенту: <code>{"question": "Когда выдана справка?"}</code> → ответ, вид ответа и источники.</td></tr>
+<tr><td><span class="method post">POST</span><code>/api/v1/documents/{slug}/approve</code></td><td>Одобрить или снять одобрение: <code>{"approved": true}</code>.</td></tr>
+<tr><td><span class="method post">POST</span><code>/api/v1/documents/{slug}/verify</code></td><td>Отметить поле сверенным: <code>{"field": "issue_date", "verified": true}</code>.</td></tr>
+<tr><td><span class="method post">POST</span><code>/api/v1/documents/{slug}/type</code></td><td>Сменить тип без повторного распознавания: <code>{"document_type": "study_certificate"}</code>.</td></tr>
+<tr><td><span class="method get">GET</span><code>/api/v1/documents/{slug}/file</code></td><td>Исходный файл.</td></tr>
+<tr><td><span class="method del">DELETE</span><code>/api/v1/documents/{slug}</code></td><td>Удалить документ и его файлы.</td></tr></table>
+<h2>Коды ошибок</h2>
+<table><tr><th>HTTP</th><th>Код</th><th>Когда</th></tr>
+<tr><td>401</td><td><code>unauthorized</code></td><td>Нет ключа или он отозван.</td></tr>
+<tr><td>400</td><td><code>no_files</code>, <code>bad_type</code></td><td>Нет файлов или неизвестный тип.</td></tr>
+<tr><td>404</td><td><code>not_found</code></td><td>Документ не существует или принадлежит другому аккаунту.</td></tr>
+<tr><td>409</td><td><code>not_ready</code></td><td>Вопрос задан до окончания распознавания.</td></tr></table>`],
+  assistant: ['Ассистент', `
+<h1>ИИ-ассистент</h1>
+<p>Ассистент — отдельная локальная языковая модель (Qwen3.5-4B через Ollama). Он не распознаёт документ заново, а объясняет уже полученный результат: поля, отметки, проверку комплектности, распознанный текст и пункты Положения. Учитывает предыдущие вопросы («а когда заканчивается?»).</p>
+<h2>Виды ответов</h2>
+<table><tr><th>Метка</th><th>Значение</th></tr>
+<tr><td>Найдено в документе</td><td>Значение есть среди распознанных полей.</td></tr>
+<tr><td>Из текста документа</td><td>Сведение найдено в распознанном тексте, но не попало в карточку полей.</td></tr>
+<tr><td>Вычислено</td><td>Сроки и длительности, посчитанные по найденным датам.</td></tr>
+<tr><td>Нет в документе</td><td>Сведения нет — ассистент не угадывает значения.</td></tr>
+<tr><td>По Положению</td><td>Ответ по пунктам Положения.</td></tr></table>
+<h2>Защита от выдумок</h2>
+<p>Каждый ответ проверяется: даты, номера и ФИО должны встречаться в документе, а утверждения о подписи и печати — совпадать с результатом распознавания. Если проверка не пройдена дважды, отвечает детерминированный движок правил. Ассистент никогда не сообщает, что документ «принят»: решение принимает сотрудник деканата (п. 1.3).</p>`],
+};
+
+export async function render(app, page = '') {
+  const [title, html] = PAGES[page] || PAGES[''];
+  const nav = h('nav', { class: 'side-nav' }, ...Object.entries(PAGES).map(([k, [t]]) =>
+    h('a', { href: '/docs' + (k ? '/' + k : ''), 'data-link': '', class: k === (PAGES[page] ? page : '') ? 'active' : '' }, t)));
+  document.title = `${title} · Документация · Онлайн-деканат`;
+  app.append(h('div', { class: 'page' }, h('div', { class: 'docs' }, nav, h('article', { class: 'prose', html }))));
+  refreshIcons();
+  return () => { document.title = 'Онлайн-деканат'; };
+}
