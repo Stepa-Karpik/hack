@@ -1,0 +1,127 @@
+import re
+import unicodedata
+from functools import lru_cache
+from pathlib import Path
+import joblib
+from .schema import SCHEMAS
+
+def normalize(value):
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value).lower().replace("ё", "е")).strip()
+
+def canonical_value(key,value):
+    lookalikes=str.maketrans("aceopxyABCEHKMOPTXY", "асеорхуАВСЕНКМОРТХУ")
+    def fix_word(match):
+        word=match.group()
+        if re.search(r"[А-Яа-яЁё]",word): return word.translate(lookalikes)
+        return word
+    value=re.sub(r"[A-Za-zА-Яа-яЁё]+",fix_word,value)
+    value=re.sub(r"(?<=[а-яё])(\s+)c(\s+)(?=[а-яё])",r"\1с\2",value,flags=re.IGNORECASE)
+    # Restore an unambiguous range separator only when exactly two dates are read.
+    if key in {"study_period","practice_period"}:
+        dates=re.findall(r"\d{1,2}[.]\d{1,2}[.]\d{4}",value)
+        if len(dates)==2 and not re.sub(r"\d{1,2}[.]\d{1,2}[.]\d{4}|[\s\-—–]", "", value):
+            return dates[0]+" - "+dates[1]
+    return value
+
+@lru_cache(maxsize=4)
+def load_field_model(path, mtime):
+    return joblib.load(path)
+
+def merge_rows(lines):
+    """Merge horizontally adjacent OCR boxes, preserving page and source geometry."""
+    rows = []
+    for line in sorted(lines, key=lambda x: (x["page"], (x["bbox"][1]+x["bbox"][3])/2)):
+        x1, y1, x2, y2 = line["bbox"]
+        cy, height = (y1+y2)/2, y2-y1
+        target = next((r for r in reversed(rows[-8:]) if r["page"] == line["page"]
+                       and abs(r["cy"]-cy) < min(height, r["height"])*.45), None)
+        if target is None:
+            rows.append({"page": line["page"], "cy": cy, "height": height, "parts": [line]})
+        else:
+            target["parts"].append(line)
+    result = []
+    for row in rows:
+        parts = sorted(row["parts"], key=lambda x: x["bbox"][0])
+        result.append({"text": " ".join(p["text"] for p in parts), "page": row["page"],
+                       "confidence": min(p["confidence"] for p in parts),
+                       "bbox": [min(p["bbox"][0] for p in parts), min(p["bbox"][1] for p in parts),
+                                max(p["bbox"][2] for p in parts), max(p["bbox"][3] for p in parts)]})
+    return result
+
+def detect_type(lines):
+    text = normalize(" ".join(x["text"] for x in lines))
+    if "академическ" in text or "причина отпуска" in text:
+        return "leave"
+    if "практик" in text:
+        return "practice"
+    if "обучени" in text or "направление подготовки" in text:
+        return "study"
+    return None
+
+def extract(lines, document_type, model_path=None):
+    rows = merge_rows(lines)
+    fields = {key: {"value": None, "status": "not_found", "confidence": 0,
+                    "evidence": None} for key in SCHEMAS[document_type]["fields"]}
+    model = None
+    if model_path and Path(model_path).exists():
+        model = load_field_model(str(model_path), Path(model_path).stat().st_mtime)
+    for index, row in enumerate(rows):
+        normalized = normalize(row["text"])
+        matches = []
+        for key, aliases in SCHEMAS[document_type]["fields"].items():
+            for alias in aliases:
+                alias_norm = normalize(alias)
+                match = re.match(r"^"+re.escape(alias_norm)+r"(?=\s|[:：=\-—.]|$)", normalized)
+                if match:
+                    matches.append((len(alias_norm), key, len(match.group())))
+        method, probability = "label", 1.0
+        if matches:
+            _, key, end = max(matches)
+            # Find the alias in the original string: whitespace normalization changes
+            # character offsets and must not truncate the beginning of a value.
+            for alias in SCHEMAS[document_type]["fields"][key]:
+                pattern=r"^"+r"\s+".join(re.escape(x) for x in alias.split())+r"(?=\s|[:：=\-—.]|$)"
+                raw_match=re.match(pattern,row["text"],flags=re.IGNORECASE)
+                if raw_match and len(normalize(raw_match.group()))==end:
+                    end=raw_match.end();break
+            value = row["text"][end:].strip(" :：=—–-.")
+        elif model:
+            prefix = re.split(r"[:：=]", row["text"], maxsplit=1)[0]
+            probabilities = model.predict_proba([prefix])[0]
+            best = int(probabilities.argmax())
+            key = str(model.classes_[best])
+            probability = float(probabilities[best])
+            if key not in fields or probability < .65:
+                continue
+            method = "trained_classifier"
+            pieces = re.split(r"[:：=]", row["text"], maxsplit=1)
+            if len(pieces) != 2:
+                continue
+            value = pieces[1].strip()
+        else:
+            continue
+        evidence = dict(row, method=method)
+        if not value and index+1 < len(rows):
+            following = rows[index+1]
+            same_page = following["page"] == row["page"]
+            gap = following["bbox"][1]-row["bbox"][3]
+            following_text = normalize(following["text"])
+            is_label = any(following_text.startswith(normalize(a))
+                           for aliases in SCHEMAS[document_type]["fields"].values() for a in aliases)
+            if same_page and 0 <= gap < 2*(row["bbox"][3]-row["bbox"][1]) and not is_label:
+                value, evidence = following["text"], dict(following, method=method+"_next_row")
+        if not value or normalize(value) in {"не указано", "нет", "не найдено", "_____", "—"}:
+            continue
+        if not re.search(r"[\w\d]", value):
+            continue
+        value=canonical_value(key,value)
+        confidence = min(row["confidence"], probability)
+        existing = fields[key]
+        if existing["value"] is not None and normalize(existing["value"]) != normalize(value):
+            existing["status"] = "conflict"
+            existing.setdefault("alternatives", []).append({"value": value, "evidence": evidence})
+            continue
+        fields[key] = {"value": value, "status": "found" if confidence >= .55 else "uncertain",
+                       "confidence": confidence, "evidence": evidence}
+    return fields
+
