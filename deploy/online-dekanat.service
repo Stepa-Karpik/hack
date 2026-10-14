@@ -1,0 +1,28 @@
+[Unit]
+Description=Online Dekanat local document worker
+After=network.target
+[Service]
+User=online-dekanat
+Group=online-dekanat
+WorkingDirectory=/opt/online-dekanat/releases/web-v1/online-dekanat
+ExecStart=/opt/online-dekanat/venv/bin/python scripts/serve_api.py --port 18765
+Environment=PYTHONUNBUFFERED=1
+Environment=OMP_NUM_THREADS=2
+Environment=MKL_NUM_THREADS=2
+Environment=OPENBLAS_NUM_THREADS=2
+Environment=DEKANAT_CACHE=/opt/online-dekanat/state
+Environment=EASYOCR_MODULE_PATH=/opt/online-dekanat/state/easyocr-module
+Environment=TORCH_HOME=/opt/online-dekanat/state/torch
+Environment=YOLO_CONFIG_DIR=/opt/online-dekanat/state/ultralytics
+Restart=on-failure
+RestartSec=5
+CPUQuota=400%
+MemoryMax=4G
+TasksMax=64
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/online-dekanat/state
+[Install]
+WantedBy=multi-user.target

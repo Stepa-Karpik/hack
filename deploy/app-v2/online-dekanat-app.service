@@ -1,0 +1,31 @@
+[Unit]
+Description=Online Dekanat app (GPU agent link, server CPU fallback)
+After=network.target
+[Service]
+User=online-dekanat
+Group=online-dekanat
+WorkingDirectory=/opt/online-dekanat/releases/app-v2
+ExecStart=/opt/online-dekanat/venv-app/bin/python -m scripts.app.server --host 127.0.0.1 --port 18780 \
+  --base /opt/online-dekanat/models/paddle-vl-1.6 --work /opt/online-dekanat/app-state \
+  --mark-head models/unified-experimental-mark-patches-v1 \
+  --agent-token-file /opt/online-dekanat/app-state/agent-token --secure-cookies
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=DEKANAT_THREADS=4
+Environment=OMP_NUM_THREADS=4
+Environment=MKL_NUM_THREADS=4
+Environment=HF_HUB_OFFLINE=1
+Environment=TRANSFORMERS_OFFLINE=1
+Environment=HF_HOME=/opt/online-dekanat/app-state/hf
+Restart=on-failure
+RestartSec=5
+CPUQuota=450%
+MemoryMax=9G
+TasksMax=128
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/online-dekanat/app-state
+[Install]
+WantedBy=multi-user.target
