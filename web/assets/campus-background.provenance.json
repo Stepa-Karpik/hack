@@ -1,0 +1,26 @@
+{
+  "input": "campus-background.png",
+  "input_sha256": "1404cd11e5464b1cd64428ecdda629c0e77b7a371267fed484750f3c20043462",
+  "output": "campus-background.gif",
+  "output_sha256": "2708d48a749d1a200945c35b059fa9c769efc2e913a5296ad4bfa56e5f22d88e",
+  "dimensions": [
+    960,
+    720
+  ],
+  "frame_count": 36,
+  "frame_duration_ms": 90,
+  "duration_ms": 3240,
+  "loop": 0,
+  "palette_colors": 96,
+  "bytes": 6282555,
+  "tools": {
+    "Python": "3.12.14",
+    "Pillow": "12.3.0"
+  },
+  "method": "Periodic sine mesh warp with fixed global palette; motion weighted toward outer coral/blue ribbons; central region held still; source PNG unchanged.",
+  "loop_seam_mean_rgb_difference": [
+    1.4621629050925926,
+    1.1292838541666668,
+    1.2961009837962962
+  ]
+}
