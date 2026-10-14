@@ -1,0 +1,61 @@
+{
+  "daisyui": {
+    "version": "5.7.47",
+    "license": "MIT",
+    "source": "https://github.com/saadeghi/daisyui",
+    "npm": "https://registry.npmjs.org/daisyui/5.7.47",
+    "components": [
+      "button",
+      "card",
+      "chat",
+      "badge",
+      "input",
+      "select",
+      "textarea",
+      "alert",
+      "loading",
+      "skeleton"
+    ],
+    "tarball_sha256": "9d66a336c61db879425b02fa0b9a2946efd5c28579307f6b241b4df4ad3b684b",
+    "verified_npm_integrity": "sha512-NOl4vPifelRqB3CMzoU751zc44KCDD9HdHMTTqQ30uiYVpIyK7+s94/ySDWgYqjdl1tQCaCrgGBx4KCizm+a3Q=="
+  },
+  "lucide-static": {
+    "version": "1.55.0",
+    "license": "ISC",
+    "source": "https://github.com/lucide-icons/lucide",
+    "npm": "https://registry.npmjs.org/lucide-static/1.55.0",
+    "icons": [
+      "file-text",
+      "upload",
+      "arrow-up",
+      "arrow-right",
+      "message-circle",
+      "shield-check",
+      "sparkles",
+      "check",
+      "chevron-down",
+      "trash-2",
+      "download",
+      "plus",
+      "x",
+      "calendar",
+      "user",
+      "building-2",
+      "copy",
+      "scan-text",
+      "layers",
+      "circle-help",
+      "link",
+      "arrow-up-right"
+    ],
+    "tarball_sha256": "809e2e759aeecd05ef3abc231395a0ccb6a58169823cbd26a425960b4d282797",
+    "verified_npm_integrity": "sha512-h18lunTFsIJWnY0FMRPjXeO9KcAtNi7fDqtqgWHOFbssfgUWsctn/pA7bpiyrd4g1DuBOJ24CsRnPfkYblwm/A=="
+  },
+  "files": {
+    "daisyui-components.css": "a37ebe46edf738626ca9e797aa96954fc0c3a9fc02cfed94688eda661042eedd",
+    "daisyui-LICENSE.txt": "8709e3ac65c84637c422dc8082b893d9997fce093751c77b2f1983bf29dbf9ea",
+    "lucide-LICENSE.txt": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57",
+    "lucide-symbols.svg": "9b8d8a3db3fc0176432dd10bb88eade3a5cfefeb8518037bd3dbc39c96fec3ef"
+  },
+  "scope": "Actual vendored compiled CSS and official SVG. npm integrity checked before extraction; no runtime CDN."
+}
