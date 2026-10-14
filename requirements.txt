@@ -1,0 +1,10 @@
+easyocr==1.7.2
+streamlit>=1.40,<2
+opencv-python-headless>=4.10,<5
+pypdfium2>=4.30,<6
+scikit-learn>=1.5,<2
+joblib>=1.4,<2
+pytest>=8,<10
+requests>=2.32,<3
+ultralytics>=8.3,<9
+

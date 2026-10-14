@@ -1,0 +1,13 @@
+{
+  "title": "Демонстрационное положение о приёме студенческих документов",
+  "provenance": "Создано командой для прототипа. Организаторы не предоставили Положение. Не является правилом реального вуза.",
+  "demo": true,
+  "rules": [
+    {"id": "1.1", "types": ["study", "leave", "practice"], "text": "Окончательное решение о приёме документа принимает сотрудник деканата."},
+    {"id": "3.2", "types": ["study"], "required": ["student_name", "university", "program", "study_form", "study_period", "document_number", "issue_date", "signature", "stamp"], "text": "Справка об обучении должна содержать ФИО студента, название вуза, направление и форму обучения, период обучения, номер и дату выдачи, подпись и печать."},
+    {"id": "4.1", "types": ["leave"], "required": ["student_name", "group", "course", "reason", "start_date", "end_date", "application_date", "signature"], "text": "Заявление на академический отпуск должно содержать ФИО, группу и курс, причину отпуска, даты его начала и окончания, дату заявления и подпись студента."},
+    {"id": "4.2", "types": ["leave"], "date_order": ["start_date", "end_date"], "text": "Дата окончания академического отпуска не может быть раньше даты его начала."},
+    {"id": "5.1", "types": ["practice"], "required": ["student_name", "organization", "practice_period", "supervisor", "grade", "document_number", "issue_date", "signature", "stamp"], "text": "Справка о практике должна содержать ФИО студента, организацию, сроки практики, руководителя, оценку, номер и дату выдачи, подпись и печать."}
+  ]
+}
+

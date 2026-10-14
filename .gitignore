@@ -1,0 +1,19 @@
+# local data, models and environments
+work/
+data/
+artifacts/
+runs/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.log
+models/cache/
+models/easyocr/
+models/unified-base/
+models/unified-qwen3-base/
+models/candidates/
+Ultralytics/
+weights/
+yolo*.pt

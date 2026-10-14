@@ -1,0 +1,19 @@
+# Current app: PaddleOCR-VL 1.6 reader + web app + GPU agent.
+# Install torch first:
+#   GPU (CUDA 12.8): pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cu128
+#   CPU:             pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cpu
+transformers==5.5.4
+tokenizers==0.22.2
+safetensors==0.8.0
+accelerate==1.12.0
+peft==0.21.2
+huggingface_hub
+numpy==2.5.4
+pillow==12.3.0
+pypdfium2==5.14.0
+starlette==1.7.0
+uvicorn==0.54.0
+python-multipart==0.0.32
+websockets==17.2
+httpx==0.28.1
+pytest>=8,<10

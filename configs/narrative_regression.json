@@ -1,0 +1,291 @@
+{
+  "checks": [
+    {
+      "id": "known_fields",
+      "before": "../artifacts/audit_selected_before_narrative.json",
+      "after": "../artifacts/audit_selected_metrics.json",
+      "metric": "field_exact_match",
+      "direction": "higher"
+    },
+    {
+      "id": "known_cards",
+      "before": "../artifacts/audit_selected_before_narrative.json",
+      "after": "../artifacts/audit_selected_metrics.json",
+      "metric": "text_card_exact_match",
+      "direction": "higher"
+    },
+    {
+      "id": "labelled_layouts",
+      "before": "../artifacts/layout_before_narrative.json",
+      "after": "../artifacts/layout_candidate_metrics.json",
+      "metric": "correct",
+      "direction": "higher"
+    },
+    {
+      "id": "original_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.original.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "original_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.original.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "perspective_front_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_front.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "perspective_front_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_front.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "perspective_from_top_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_from_top.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "perspective_from_top_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_from_top.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "perspective_from_bottom_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_from_bottom.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "perspective_from_bottom_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_from_bottom.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "perspective_from_left_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_from_left.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "perspective_from_left_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_from_left.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "perspective_from_right_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_from_right.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "perspective_from_right_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_from_right.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "perspective_diagonal_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_diagonal.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "perspective_diagonal_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.perspective_diagonal.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "rotate_minus_30_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.rotate_minus_30.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "rotate_minus_30_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.rotate_minus_30.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "defocus_1_2_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.defocus_1_2.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "defocus_1_2_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.defocus_1_2.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "defocus_2_2_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.defocus_2_2.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "defocus_2_2_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.defocus_2_2.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "motion_blur_9_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.motion_blur_9.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "motion_blur_9_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.motion_blur_9.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "dark_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.dark.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "dark_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.dark.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "shadow_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.shadow.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "shadow_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.shadow.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "spotlight_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.spotlight.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "spotlight_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.spotlight.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "flash_mild_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.flash_mild.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "flash_mild_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.flash_mild.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "flash_clipped_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.flash_clipped.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "flash_clipped_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.flash_clipped.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "warm_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.warm.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "warm_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.warm.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "half_resolution_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.half_resolution.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "half_resolution_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.half_resolution.confident_wrong",
+      "direction": "lower"
+    },
+    {
+      "id": "combined_view_shadow_blur_correct",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.combined_view_shadow_blur.correct",
+      "direction": "higher"
+    },
+    {
+      "id": "combined_view_shadow_blur_confident_wrong",
+      "before": "../artifacts/camera_photo_before_narrative.json",
+      "after": "../artifacts/camera_photo_metrics.json",
+      "metric": "summary.combined_view_shadow_blur.confident_wrong",
+      "direction": "lower"
+    }
+  ]
+}
