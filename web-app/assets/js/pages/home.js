@@ -12,7 +12,8 @@ export async function render(app) {
   const drop = h('label', { class: 'drop', tabindex: '0' },
     h('div', { class: 'ico' }, icon('file-up')),
     h('strong', {}, 'Перетащите документы или выберите файлы'),
-    h('span', { class: 'muted' }, 'PDF, JPG или PNG · до 10 МБ · можно сразу несколько — обработаем в фоне'), input);
+    h('span', { class: 'muted' }, 'PDF, JPG или PNG · до 10 МБ · можно сразу несколько — обработаем в фоне'), input,
+    h('a', { class: 'btn', href: '/camera', 'data-link': '', style: { marginTop: '12px' }, onclick: (e) => e.stopPropagation() }, icon('camera'), 'Снять камерой'));
   const go = (files) => uploadFiles(files, type.value, { open: files.length === 1 });
   input.addEventListener('change', () => { go(input.files); input.value = ''; });
   drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
@@ -32,15 +33,15 @@ export async function render(app) {
   const name = state.user.name ? `, ${state.user.name}` : '';
   app.append(h('div', { class: 'page' },
     h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, `Проверка документов${name}`),
-      h('p', { class: 'muted' }, 'Модель читает документ, находит поля, подпись и печать и проверяет комплектность по Положению.'))),
+      h('p', { class: 'muted' }, 'Сервис читает документ, находит поля, подпись и печать, проверяет комплектность по Положению — а вы отправляете готовую заявку в деканат.'))),
     h('div', { class: 'hero' }, drop, h('div', { class: 'upload-bar' }, h('span', { class: 'muted' }, 'Тип:'), type, h('div', { class: 'grow' }), samples)),
     h('div', { class: 'row', style: { margin: '36px 0 12px' } }, h('h2', { class: 'grow' }, 'Недавние'),
-      h('a', { href: '/history', 'data-link': '', class: 'btn ghost sm' }, 'Вся история', icon('arrow-right'))),
+      h('a', { href: '/history', 'data-link': '', class: 'btn ghost sm' }, 'Все заявки', icon('arrow-right'))),
     recent));
 
   async function load() {
     try {
-      const { documents } = await api('/api/documents');
+      const { documents } = await api('/api/documents?mine=1');
       recent.replaceChildren(documents.length ? h('div', { class: 'list' }, ...documents.slice(0, 6).map(documentRow))
         : h('div', { class: 'empty' }, icon('inbox'), h('div', {}, 'Здесь появятся ваши проверки')));
       refreshIcons();

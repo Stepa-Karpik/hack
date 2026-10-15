@@ -111,12 +111,14 @@ class RemoteReader:
     def ensure(self):
         pass  # the CPU fallback is started lazily, only if ever needed
 
-    def run(self, task, source, output):
+    def run(self, task, source, output, **extra):
         if self.broker.connected():
             try:
-                data = self.broker.call(task, {'filename': Path(source).name,
+                data = self.broker.call(task, {'filename': Path(source).name, **extra,
                                                'file': base64.b64encode(Path(source).read_bytes()).decode()}, timeout=240)
                 Path(output).write_text(data['output'], encoding='utf-8')
+                if data.get('preview'):
+                    Path(output).with_name('preview.png').write_bytes(base64.b64decode(data['preview']))
                 self.last_device = 'agent'
                 return
             except Exception:
@@ -130,7 +132,7 @@ class RemoteReader:
         with self.lock:
             if self.fallback is None:
                 self.fallback = self.fallback_factory()
-        self.fallback.run(task, source, output)
+        self.fallback.run(task, source, output, **extra)
         self.last_device = 'server-cpu'
 
 
@@ -161,6 +163,14 @@ def remote_assistant(broker, config, model):
     from scripts.assistant.core import Assistant
 
     class RemoteAssistant(Assistant):
+        @property
+        def compact(self):  # the agent's PC decides: a CPU-only model gets the short context
+            return bool(broker.info.get('compact'))
+
+        @compact.setter
+        def compact(self, value):
+            pass
+
         def available(self):
             return broker.connected() and bool(broker.info.get('assistant'))
 

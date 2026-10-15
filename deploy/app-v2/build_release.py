@@ -10,7 +10,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INCLUDE = ['scripts', 'dekanat', 'configs', 'web-app', 'deploy/app-v2', 'docs/APP.md', 'docs/ASSISTANT.md', 'LICENSE', 'README.md',
            'models/unified-experimental-graphic-head-fp32-v3', 'models/unified-experimental-natural-v5',
-           'models/unified-experimental-mark-patches-v1']
+           'models/unified-experimental-mark-patches-v1',
+           # CPU engine (server fallback without the GPU agent): first-generation weights
+           'models/fields.joblib', 'models/marks.pt', 'models/ocr_cyrillic.pt', 'models/ocr_quotes.pt',
+           'models/ocr_selection.json', 'models/quote_selection.json', 'models/visual.pt',
+           'web-app/assets/samples']
 SKIP_DIRS = {'__pycache__', 'experiments'}
 
 
@@ -31,7 +35,7 @@ def main():
     with tarfile.open(out, 'w:gz') as tar:
         for f in files():
             data = f.read_bytes()
-            if f.suffix in {'.sh', '.py', '.service', '.conf', '.txt'}:
+            if f.suffix in {'.sh', '.py', '.service', '.conf', '.txt'} and f.parent.name != 'models':
                 data = data.replace(b'\r\n', b'\n')
             info = tarfile.TarInfo(f.relative_to(ROOT).as_posix())
             info.size, info.mode = len(data), 0o755 if f.suffix == '.sh' else 0o644

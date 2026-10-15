@@ -3,10 +3,12 @@
   [string]$Adapter='models\unified-experimental-natural-v5',
   [string]$MarkHead='models\unified-experimental-mark-patches-v1',
   [string]$AssistantModel='qwen3.5:4b',
+  [ValidateSet('auto','gpu','cpu')][string]$Engine='auto',
   [switch]$Cpu
 )
-# Онлайн-деканат: accounts, history, API keys, assistant. One PaddleOCR-VL reader (GPU per page),
-# local Ollama chat model. Data lives in work\app-v1 (SQLite + files).
+# Онлайн-деканат: accounts, roles, history, API keys, assistant.
+# -Engine auto (default) = the fast CPU engine (~4-6 s per page, no GPU needed); -Engine gpu = PaddleOCR-VL on CUDA;
+# -Engine cpu forces the CPU engine (no GPU needed). Local Ollama chat model. Data lives in work\app-v1 (SQLite + files).
 $ErrorActionPreference='Stop'
 $project=$PSScriptRoot
 $work=if ($env:DEKANAT_WORK) { $env:DEKANAT_WORK } else { (Join-Path $PSScriptRoot 'work') }
@@ -15,7 +17,8 @@ if (-not (Test-Path -LiteralPath $python)) { throw 'Paddle-окружение н
 $cli=@('-m','scripts.app.server','--port',$Port,'--adapter',$Adapter,'--assistant-model',$AssistantModel,
   '--work',(Join-Path $work 'app-v1'))
 if (Test-Path -LiteralPath (Join-Path $project $MarkHead)) { $cli+=@('--mark-head',$MarkHead) }
-if ($Cpu) { $cli+='--cpu' }
+if ($Cpu) { $Engine='cpu' }
+$cli+=@('--engine',$Engine)
 Set-Location -LiteralPath $project
 Write-Host "Онлайн-деканат: http://127.0.0.1:$Port"
 & $python @cli

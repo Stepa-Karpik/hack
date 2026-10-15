@@ -207,8 +207,10 @@ def recognize(pages, gpu=True, retry=True,finetuned=True):
     lines = []
     retry_count = 0
     for page_id, page in enumerate(pages):
+        # Detector canvas only: recognition still reads crops of the full-resolution page.
+        canvas = int(os.environ.get('DEKANAT_DETECT_SIDE', '2000'))
         image, scale = prepare(page)
-        output = reader.readtext(image, batch_size=8, paragraph=False, canvas_size=2000, min_size=5,
+        output = reader.readtext(image, batch_size=int(os.environ.get('DEKANAT_OCR_BATCH', '8')), paragraph=False, canvas_size=canvas, min_size=5,
                                  decoder="greedy", workers=0)
         for polygon, value, confidence in output:
             points = np.asarray(polygon, dtype=float) / scale

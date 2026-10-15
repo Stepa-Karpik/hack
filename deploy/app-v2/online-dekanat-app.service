@@ -11,12 +11,18 @@ ExecStart=/opt/online-dekanat/venv-app/bin/python -m scripts.app.server --host 1
   --agent-token-file /opt/online-dekanat/app-state/agent-token --secure-cookies
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONDONTWRITEBYTECODE=1
-Environment=DEKANAT_THREADS=4
+Environment=DEKANAT_THREADS=5
 Environment=OMP_NUM_THREADS=4
 Environment=MKL_NUM_THREADS=4
 Environment=HF_HUB_OFFLINE=1
 Environment=TRANSFORMERS_OFFLINE=1
 Environment=HF_HOME=/opt/online-dekanat/app-state/hf
+# CPU engine when the GPU agent is offline: first-generation environment and EasyOCR weights of the web-v1 install
+Environment=DEKANAT_CPU_PYTHON=/opt/online-dekanat/venv/bin/python
+Environment=DEKANAT_CACHE=/opt/online-dekanat/state
+Environment=EASYOCR_MODULE_PATH=/opt/online-dekanat/state/easyocr-module
+Environment=YOLO_CONFIG_DIR=/opt/online-dekanat/state/ultralytics
+Environment=TORCH_HOME=/opt/online-dekanat/state/torch
 Restart=on-failure
 RestartSec=5
 CPUQuota=450%
@@ -26,6 +32,6 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/online-dekanat/app-state
+ReadWritePaths=/opt/online-dekanat/app-state /opt/online-dekanat/state
 [Install]
 WantedBy=multi-user.target

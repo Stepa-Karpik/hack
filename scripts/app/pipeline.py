@@ -111,6 +111,46 @@ def analyze(row, kind):
     }
 
 
+FAST_REVIEW_THRESHOLD = 0.5  # CPU engine: recognizer confidence of the value line
+
+
+def analyze_fast(row, kind, custom=None):
+    """Same analysis shape as analyze(), from the CPU engine (fields, statuses, geometry already resolved)."""
+    custom = custom or {}
+    detected = row.get('detected_type')
+    if kind == 'auto':
+        kind = detected or 'study_certificate'
+    matched = detected == kind and bool(row.get('fields'))
+    if matched:
+        fields, validation = row['fields'], row['validation']
+    elif kind in custom:  # a constructor type that was not recognised on the page
+        from scripts.app import custom_types
+        fields = {key: False if key in MARKS else 'не найдено' for key in custom_types.field_keys(custom[kind])}
+        validation = custom_types.validate(custom[kind], fields)
+    else:
+        result = official_result({'document_type': kind, 'fields': {key: None for key in KEYS[kind]},
+                                  'boxes': {key: None for key in KEYS[kind]}})
+        fields, validation = result['fields'], result['validation']
+    statuses = row.get('statuses') or {}
+    confidence = dict(row.get('confidence') or {}) if matched else {}
+    review = {}
+    for key, value in fields.items():
+        if key in MARKS:
+            continue
+        conf = confidence.get(key)
+        review[key] = bool(value not in (None, 'не найдено') and (statuses.get(key) == 'conflict'
+                                                                  or (conf is not None and conf < FAST_REVIEW_THRESHOLD)))
+    mark_boxes = {r['field']: r['bbox'] for r in row.get('regions') or [] if r['field'] in MARKS and r.get('kind') != 'missing'} if matched else {}
+    audit = {key: {'status': statuses.get(key) or 'not_found', 'source': 'cpu_fast_engine'} for key in fields}
+    return {
+        'document_type': kind, 'detected_type': detected, 'type_matches': matched,
+        'fields': fields, 'validation': validation, 'audit': audit, 'confidence': confidence, 'review': review,
+        'recovered_from_prose': [], 'mark_boxes': mark_boxes, 'ocr_text': row.get('ocr_text', ''),
+        'raw_ocr': row.get('ocr_text', ''), 'layout_edits': [], 'engine': 'cpu-fast',
+        'model': {'decoder': 'cpu-fast', 'seconds': row.get('seconds', 0), 'token_budget_reached': False, 'visual_passes': 1},
+    }
+
+
 def counts(analysis):
     fields = analysis['fields']
     found = sum(1 for v in fields.values() if v not in ('не найдено', False, None))

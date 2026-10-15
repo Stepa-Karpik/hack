@@ -20,7 +20,7 @@ from pathlib import Path
 
 from websockets.asyncio.client import connect
 
-from scripts.app.processing import Reader
+from scripts.app.processing import FastReader, Reader, cuda_available
 from scripts.assistant import core
 from scripts.unified.contract import CONFIG
 
@@ -38,13 +38,14 @@ class Agent:
         self.args = args
         self.work = Path(args.work)
         self.work.mkdir(parents=True, exist_ok=True)
-        self.reader = Reader(args.base, args.head, args.adapter, self.work, gpu=not args.cpu, ollama=core.OLLAMA,
+        self.reader = FastReader(self.work) if args.engine == 'cpu' else Reader(
+                             args.base, args.head, args.adapter, self.work, gpu=not args.cpu, ollama=core.OLLAMA,
                              mark_head=args.mark_head)
-        self.assistant = core.Assistant(CONFIG, model=args.assistant_model)
+        self.assistant = core.Assistant(CONFIG, model=args.assistant_model, compact=bool(args.cpu) or not cuda_available())
 
     def info(self):
         return {'host': platform.node(), 'gpu': None if self.args.cpu else gpu_name(),
-                'assistant': self.assistant.available(), 'model': self.args.assistant_model}
+                'assistant': self.assistant.available(), 'model': self.args.assistant_model, 'compact': self.assistant.compact}
 
     # ---------------------------------------------------------------- jobs (worker threads)
     def read(self, task, data):
@@ -54,8 +55,13 @@ class Agent:
             source = folder / ('input' + suffix)
             source.write_bytes(base64.b64decode(data['file']))
             output = folder / 'result.json'
-            self.reader.run(task, source, output)
-            return {'output': output.read_text(encoding='utf-8')}
+            extras = {k: v for k, v in data.items() if k not in ('filename', 'file')}
+            self.reader.run(task, source, output, **extras)
+            result = {'output': output.read_text(encoding='utf-8')}
+            preview = output.with_name('preview.png')  # rectified page written by the CPU engine
+            if preview.exists():
+                result['preview'] = base64.b64encode(preview.read_bytes()).decode()
+            return result
         finally:
             shutil.rmtree(folder, ignore_errors=True)
 
@@ -133,6 +139,8 @@ def main():
     p.add_argument('--assistant-model', default='qwen3.5:4b')
     p.add_argument('--work', default='work/agent-v1')
     p.add_argument('--cpu', action='store_true')
+    p.add_argument('--engine', choices=['cpu', 'gpu'], default='cpu',
+                   help='cpu: fast engine (~6 s per page, best field binding); gpu: PaddleOCR-VL')
     asyncio.run(Agent(p.parse_args()).run())
 
 

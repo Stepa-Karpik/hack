@@ -8,7 +8,7 @@ import threading
 import time
 from pathlib import Path
 
-from scripts.app.pipeline import analyze, counts
+from scripts.app.pipeline import analyze, analyze_fast, counts
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -50,20 +50,56 @@ class Reader:
             if self.process is None or self.process.poll() is not None:
                 self._start()
 
-    def run(self, task, source, output):
+    engine = 'vlm'
+
+    def run(self, task, source, output, **extra):
         with self.lock:
             if self.process is None or self.process.poll() is not None:
                 self._start()
-            self.process.stdin.write(json.dumps({'task': task, 'input': str(source), 'output': str(output)}) + '\n')
+            self.process.stdin.write(json.dumps({'task': task, 'input': str(source), 'output': str(output), **extra}) + '\n')
             self.process.stdin.flush()
             reply = self._expect('ok')
         if not reply['ok']:
             raise RuntimeError(reply.get('error', 'reader failed'))
 
 
+def default_cpu_python():
+    """Interpreter of the first-generation environment (easyocr, ultralytics) used by the CPU engine."""
+    if os.environ.get('DEKANAT_CPU_PYTHON'):
+        return os.environ['DEKANAT_CPU_PYTHON']
+    work = Path(os.environ.get('DEKANAT_WORK', ROOT / 'work'))
+    for candidate in (work / 'venv/Scripts/python.exe', work / 'venv/bin/python'):
+        if candidate.exists():
+            return str(candidate)
+    return sys.executable
+
+
+class FastReader(Reader):
+    """CPU engine for machines without a GPU (scripts.app.fast_worker): ~5 s per page, field geometry included."""
+    engine = 'cpu-fast'
+
+    def __init__(self, work, python=None, threads=None):
+        self.command = [python or default_cpu_python(), '-m', 'scripts.app.fast_worker']
+        if threads:
+            self.command += ['--threads', str(threads)]
+        self.log = Path(work) / 'reader-cpu.log'
+        self.process = None
+        self.lock = threading.Lock()
+
+
+def cuda_available():
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except Exception:
+        return False
+
+
 class Processor:
     def __init__(self, store, reader, files, assistant=None):
         self.store, self.reader, self.files, self.assistant = store, reader, Path(files), assistant
+        # document types from the constructor travel with every request (the reader may be a remote agent)
+        self.custom_types = lambda: [t['config'] for t in store.doc_types()]
         # Recognition first (priority 0); highlighting jobs (priority 1) only when no upload waits.
         self.queue = queue.PriorityQueue()
         self.sequence = 0
@@ -114,14 +150,26 @@ class Processor:
         output = folder / 'native-result.json'
         for stale in (output, output.with_suffix('.headfeatures.npz')):
             stale.unlink(missing_ok=True)
-        self.reader.run('ocr', source, output)
+        custom = self.custom_types()
+        self.reader.run('ocr', source, output, document_type=doc['requested_type'], custom_types=custom)
         row = json.loads(output.read_text(encoding='utf-8'))['rows'][0]
-        analysis = analyze(row, doc['requested_type'])
+        fast = row.get('engine') == 'cpu-fast'
+        custom = {c['key']: c for c in custom}
+        if fast or doc['requested_type'] in custom:
+            analysis = analyze_fast(row, doc['requested_type'], custom)
+        else:
+            analysis = analyze(row, doc['requested_type'])
         (folder / 'analysis.json').write_text(json.dumps(analysis, ensure_ascii=False), encoding='utf-8')
         found, total = counts(analysis)
         self.store.update_document(slug, status='done', document_type=analysis['document_type'], found=found, total=total,
                                    valid=int(analysis['validation']['status'] == 'document_ok'),
                                    seconds=round(time.perf_counter() - started, 1), error=None)
+        self.store.add_event(slug, None, 'processed', found=f'{found}/{total}', seconds=round(time.perf_counter() - started, 1),
+                             missing=analysis['validation']['missing_fields'])
+        if fast:  # the CPU engine returns field geometry with the result: no second pass
+            (folder / 'regions.json').write_text(json.dumps({'status': 'done', 'regions': row.get('regions') or []},
+                                                            ensure_ascii=False), encoding='utf-8')
+            return
         (folder / 'regions.json').write_text(json.dumps({'status': 'pending', 'regions': []}), encoding='utf-8')
         self._put(1, 'regions', slug, (source, folder, analysis))
 

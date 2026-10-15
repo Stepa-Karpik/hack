@@ -1,15 +1,19 @@
 // App shell: router, session, top bar, background uploads with completion notifications.
-import { $, $$, h, icon, refreshIcons, api, ok, fail, info, showError } from './ui.js';
+import { $, $$, h, icon, refreshIcons, api, ok, fail, info, showError, loadTypes } from './ui.js';
 
-export const state = { user: null, watching: new Map(), cleanup: null };
+export const state = { user: null, watching: new Map(), cleanup: null, states: new Map() };
+export const isStaff = () => ['staff', 'admin'].includes(state.user?.role);
+export const ROLE_NAMES = { student: 'Студент', staff: 'Сотрудник деканата', admin: 'Суперадмин' };
 
 const routes = [
   [/^\/$/, () => import('./pages/home.js'), true],
   [/^\/login$/, () => import('./pages/auth.js').then((m) => ({ render: m.login })), false],
   [/^\/register$/, () => import('./pages/auth.js').then((m) => ({ render: m.register })), false],
   [/^\/check\/([0-9a-z-]+)$/, () => import('./pages/check.js'), true],
+  [/^\/check\/([0-9a-z-]+)\/edit$/, () => import('./pages/editor.js'), true],
+  [/^\/camera$/, () => import('./pages/camera.js'), true],
   [/^\/history$/, () => import('./pages/history.js'), true],
-  [/^\/profile(?:\/(security|api))?$/, () => import('./pages/profile.js'), true],
+  [/^\/profile(?:\/(security|api|users|types|marks))?$/, () => import('./pages/profile.js'), true],
   [/^\/docs(?:\/([a-z-]+))?$/, () => import('./pages/docs.js'), false],
 ];
 
@@ -51,6 +55,8 @@ export function renderTopbar() {
   const right = $('#topbar-right');
   right.replaceChildren();
   $('#nav').hidden = !state.user;
+  const histLink = document.querySelector('#nav a[data-nav="/history"]');
+  if (histLink) histLink.textContent = isStaff() ? 'Входящие' : 'Мои заявки';
   const theme = h('button', { class: 'btn ghost icon', title: 'Тема', onclick: () => {
     const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
     document.documentElement.dataset.theme = next; try { localStorage.setItem('dk-theme', next); } catch {}
@@ -63,8 +69,12 @@ export function renderTopbar() {
     const initials = (state.user.name || state.user.email).trim()[0]?.toUpperCase() || '?';
     menu.append(h('button', { class: 'avatar', title: state.user.email, onclick: (e) => { e.stopPropagation(); menu.classList.toggle('open'); } }, initials),
       h('div', { class: 'menu-panel' },
-        h('div', { class: 'subtle', style: { padding: '6px 10px', fontSize: '12.5px' } }, state.user.email),
+        h('div', { class: 'subtle', style: { padding: '6px 10px', fontSize: '12.5px' } }, state.user.email,
+          h('div', { style: { fontSize: '11.5px', marginTop: '2px' } }, ROLE_NAMES[state.user.role] || '')),
         h('a', { href: '/profile', 'data-link': '' }, icon('user-round'), 'Профиль'),
+        h('a', { href: '/profile/marks', 'data-link': '' }, icon('signature'), isStaff() ? 'Подпись и печать' : 'Моя подпись'),
+        state.user.role === 'admin' ? h('a', { href: '/profile/users', 'data-link': '' }, icon('users'), 'Пользователи и приглашения') : null,
+        state.user.role === 'admin' ? h('a', { href: '/profile/types', 'data-link': '' }, icon('shapes'), 'Типы документов') : null,
         h('a', { href: '/profile/api', 'data-link': '' }, icon('key-round'), 'API-ключи'),
         h('a', { href: '/history', 'data-link': '' }, icon('history'), 'История'),
         h('button', { onclick: logout }, icon('log-out'), 'Выйти')));
@@ -98,10 +108,24 @@ export async function uploadFiles(files, type = 'auto', { open = false } = {}) {
 
 export function watch(slug, filename) { state.watching.set(slug, filename); }
 
+const DECISION_TOASTS = { approved: ['ok', 'Документ одобрен деканатом'], returned: ['info', 'Документ возвращён на доработку'], closed: ['info', 'Заявка закрыта деканатом'] };
+let lastStateCheck = 0;
 async function poll() {
-  if (state.user && state.watching.size) {
+  const due = Date.now() - lastStateCheck > 15000;
+  if (state.user && (state.watching.size || due)) {
+    lastStateCheck = Date.now();
     try {
-      const { documents } = await api('/api/documents');
+      const { documents } = await api('/api/documents?mine=1');
+      for (const d of documents) {  // the deanery's decisions reach the student without a reload
+        const before = state.states.get(d.slug);
+        if (before && before !== d.state && DECISION_TOASTS[d.state]) {
+          const [kind, title] = DECISION_TOASTS[d.state];
+          (kind === 'ok' ? ok : info)(title, d.decision_comment || d.filename, { href: '/check/' + d.slug, label: 'Открыть' });
+          if (document.hidden && Notification?.permission === 'granted') new Notification(title, { body: d.filename });
+          window.dispatchEvent(new CustomEvent('document-updated', { detail: d }));
+        }
+        state.states.set(d.slug, d.state);
+      }
       for (const d of documents) {
         if (!state.watching.has(d.slug) || !['done', 'failed'].includes(d.status)) continue;
         state.watching.delete(d.slug);
@@ -133,9 +157,13 @@ window.addEventListener('drop', (e) => {
 
 (async () => {
   try { state.user = (await api('/api/me')).user; } catch { state.user = null; }
+  if (state.user) await loadTypes();
   renderTopbar();
   if (state.user) {
-    try { const { documents } = await api('/api/documents'); for (const d of documents) if (['queued', 'running'].includes(d.status)) watch(d.slug, d.filename); } catch {}
+    try {
+      const { documents } = await api('/api/documents?mine=1');
+      for (const d of documents) { state.states.set(d.slug, d.state); if (['queued', 'running'].includes(d.status)) watch(d.slug, d.filename); }
+    } catch {}
   }
   await render();
   poll();

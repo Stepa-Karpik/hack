@@ -90,9 +90,39 @@ export function statusChip(d) {
   if (d.status === 'queued') return h('span', { class: 'chip info' }, icon('clock'), d.queue_position > 1 ? `В очереди · ${d.queue_position}` : 'В очереди');
   if (d.status === 'running') return h('span', { class: 'chip info' }, icon('loader-circle', 'spin'), 'Распознаётся');
   if (d.status === 'failed') return h('span', { class: 'chip bad' }, icon('circle-x'), 'Ошибка');
-  if (d.approved) return h('span', { class: 'chip ok' }, icon('badge-check'), d.approved_by === 'auto' ? 'Одобрен автоматически' : 'Одобрен');
-  if (d.valid) return h('span', { class: 'chip ok' }, icon('check'), 'Соответствует');
-  return h('span', { class: 'chip warn' }, `${d.found}/${d.total}`);
+  const state = d.state || 'draft';
+  if (state === 'closed') return h('span', { class: 'chip bad' }, icon('archive-x'), 'Закрыта');
+  if (state === 'returned') return h('span', { class: 'chip bad' }, icon('undo-2'), 'Возвращён');
+  if (state === 'approved') return h('span', { class: 'chip ok' }, icon('badge-check'), d.approved_by === 'auto' ? 'Одобрен автоматически' : 'Одобрен');
+  if (state === 'review') return h('span', { class: 'chip info' }, icon('eye'), 'На рассмотрении');
+  if (state === 'submitted') return h('span', { class: 'chip accent' }, icon('send'), 'Отправлен');
+  if (d.valid) return h('span', { class: 'chip ok' }, icon('check'), 'Черновик · полный');
+  return h('span', { class: 'chip warn' }, `Черновик · ${d.found}/${d.total}`);
+}
+
+/* Modal dialog: { title, body: [nodes], actions: [buttons], wide } -> { close } */
+export function modal({ title, body = [], actions = [], wide = false }) {
+  const close = () => { backdrop.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  const card = h('div', { class: 'modal' + (wide ? ' wide' : ''), role: 'dialog', 'aria-modal': 'true' },
+    h('div', { class: 'modal-head' }, h('h2', {}, title), h('button', { class: 'btn ghost icon sm', title: 'Закрыть', onclick: () => close() }, icon('x'))),
+    h('div', { class: 'modal-body' }, ...body), actions.length ? h('div', { class: 'modal-foot' }, ...actions) : null);
+  const backdrop = h('div', { class: 'modal-backdrop', onclick: (e) => { if (e.target === backdrop) close(); } }, card);
+  document.body.append(backdrop);
+  document.addEventListener('keydown', onKey);
+  refreshIcons();
+  return { close, card };
+}
+
+/* Document types defined in the constructor are merged into TYPES / LABELS at start-up. */
+export async function loadTypes() {
+  try {
+    const { types } = await api('/api/types');
+    for (const t of types) {
+      TYPES[t.key] = t.title;
+      for (const f of t.fields || []) LABELS[f.key] = LABELS[f.key] || f.label;
+    }
+  } catch { /* built-in types stay available */ }
 }
 export function copy(text, label = 'Скопировано') {
   navigator.clipboard?.writeText(text).then(() => ok(label), () => fail('Не удалось скопировать'));

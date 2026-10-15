@@ -1,5 +1,5 @@
-import { $, $$, h, icon, refreshIcons, api, TYPES, LABELS, displayValue, statusChip, showError, ok, info, copy, ago } from '../ui.js';
-import { navigate, watch } from '../main.js';
+import { $, $$, h, icon, refreshIcons, api, TYPES, LABELS, displayValue, statusChip, showError, ok, info, copy, ago, modal } from '../ui.js';
+import { navigate, watch, isStaff } from '../main.js';
 import { mountChat } from '../chat.js';
 
 const RULE_TEXT = { '3.1': 'п. 3.1', '3.2': 'п. 3.2', '3.3': 'п. 3.3', '4.1': 'п. 4.1', '4.2': 'п. 4.2', '5.1': 'п. 5.1', '5.2': 'п. 5.2', '5.3': 'п. 5.3' };
@@ -32,7 +32,7 @@ export async function render(app, slug) {
     const timer = h('span', { class: 'muted' });
     const speedNote = h('p', { class: 'muted' }, 'Обычно это занимает 5–10 секунд. Можно уйти со страницы — мы сообщим, когда всё будет готово.');
     api('/api/health').then((s) => {
-      if (s.reader === 'server-cpu') speedNote.textContent = 'Графический ускоритель сейчас недоступен — распознаём на процессоре сервера, это займёт 1–3 минуты. Можно уйти со страницы — мы сообщим, когда всё будет готово.';
+      if (s.reader === 'server-cpu' || s.reader === 'cpu-fast') speedNote.textContent = 'Распознаём на процессоре — обычно 5–10 секунд. Можно уйти со страницы — мы сообщим, когда всё будет готово.';
     }).catch(() => {});
     const tick = () => { timer.textContent = `${Math.max(0, Math.round(Date.now() / 1000 - started))} с`; };
     tick();
@@ -76,7 +76,9 @@ export async function render(app, slug) {
     frame.append(img);
     for (const r of regions) {
       const [x0, y0, x1, y1] = r.bbox;
-      const box = h('button', { class: 'region' + (r.field.endsWith('_present') ? ' mark' : ''), title: LABELS[r.field] || r.field, 'data-field': r.field,
+      const missingPlace = r.kind === 'missing';
+      const box = h('button', { class: 'region' + (r.field.endsWith('_present') ? ' mark' : '') + (missingPlace ? ' missing' : ''),
+        title: missingPlace ? `Здесь должна быть ${r.field === 'seal_present' ? 'печать' : 'подпись'}` : (LABELS[r.field] || r.field), 'data-field': r.field,
         style: { left: x0 * 100 + '%', top: y0 * 100 + '%', width: (x1 - x0) * 100 + '%', height: (y1 - y0) * 100 + '%' } });
       box.addEventListener('mouseenter', () => focus(r.field, false));
       box.addEventListener('click', () => focus(r.field, true));
@@ -106,15 +108,29 @@ export async function render(app, slug) {
     const viewTabs = h('div', { class: 'tabs' },
       h('button', { class: view === 'page' ? 'active' : '', onclick: () => { view = 'page'; draw(); } }, 'Документ'),
       h('button', { class: view === 'text' ? 'active' : '', onclick: () => { view = 'text'; draw(); } }, 'Текст'));
+    const can = doc.can || {};
+    const staff = isStaff();
+    const foreign = !!doc.owner;  // staff looking at a student's application
+    const state = doc.state || 'draft';
+    const menu = h('div', { class: 'menu' });
+    const menuItem = (iconName, label, onclick, cls = '') => h('button', { class: cls, onclick: () => { menu.classList.remove('open'); onclick(); } }, icon(iconName), label);
+    menu.append(h('button', { class: 'btn ghost icon sm', title: 'Действия', onclick: (e) => { e.stopPropagation(); menu.classList.toggle('open'); } }, icon('ellipsis')),
+      h('div', { class: 'menu-panel' },
+        menuItem('history', 'История заявки', openHistory),
+        can.edit ? menuItem('pen-tool', staff && foreign ? 'Поставить печать или подпись' : 'Открыть в редакторе', () => navigate(`/check/${slug}/edit`)) : null,
+        can.replace ? menuItem('file-up', 'Заменить файл', pickReplacement) : null,
+        menuItem('file-text', 'Протокол проверки (PDF)', () => window.open(`/api/documents/${slug}/protocol.pdf`, '_blank')),
+        menuItem('external-link', 'Открыть оригинал', () => window.open(doc.file_url, '_blank')),
+        menuItem('link', 'Копировать ссылку', () => copy(location.href, 'Ссылка скопирована')),
+        can.close ? menuItem('archive-x', 'Закрыть заявку', openClose, 'danger') : null,
+        can.delete ? menuItem('trash-2', 'Удалить', remove, 'danger') : null));
     const viewerPane = h('section', { class: 'pane viewer-pane' },
       h('div', { class: 'pane-head' }, h('div', { class: 'grow', style: { minWidth: 0 } },
         h('div', { class: 'item-title', title: doc.filename }, doc.filename),
         h('div', { class: 'subtle', style: { fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
-          `${String(a.model.seconds.toFixed(1)).replace('.', ',')} с · ${ago(doc.created)}`)),
-        viewTabs, regionsBtn,
-        h('a', { class: 'btn ghost icon sm', href: doc.file_url, target: '_blank', rel: 'noopener', title: 'Открыть оригинал' }, icon('external-link')),
-        h('button', { class: 'btn ghost icon sm', title: 'Копировать ссылку', onclick: () => copy(location.href, 'Ссылка скопирована') }, icon('link')),
-        h('button', { class: 'btn ghost icon sm danger', title: 'Удалить документ', onclick: remove }, icon('trash-2'))),
+          (doc.owner ? `${doc.owner.name || doc.owner.email} · ` : '') + (doc.version > 1 ? `версия ${doc.version} · ` : '')
+          + `${String(a.model.seconds.toFixed(1)).replace('.', ',')} с · ${ago(doc.created)}`)),
+        viewTabs, regionsBtn, menu),
       viewer, textView);
 
     // ---- fields
@@ -126,22 +142,31 @@ export async function render(app, slug) {
       okDoc ? h('div', { class: 'muted', style: { fontSize: '13px' } }, 'Это предварительная проверка. Окончательное решение принимает сотрудник деканата (п. 1.3).')
         : h('ul', {}, ...missing.map((k) => h('li', {}, action(k, kind, a), ' ', h('span', { class: 'subtle' }, RULE_TEXT[ruleFor(k, kind)] || '')))));
     if (!a.type_matches) verdict.append(h('div', { class: 'muted', style: { fontSize: '12.5px' } },
-      a.detected_type ? `Модель видит заголовок «${TYPES[a.detected_type]}». Проверьте тип документа.` : 'Заголовок документа не распознан как один из трёх типов — поля могут быть не найдены.'));
+      a.detected_type ? `Модель видит заголовок «${TYPES[a.detected_type]}». Проверьте тип документа.` : 'Заголовок документа не распознан — поля могут быть не найдены. Выберите тип вручную.'));
+    const nameWarn = doc.name_check?.status === 'mismatch' ? h('div', { class: 'verdict warn' },
+      h('div', { class: 'verdict-title' }, icon('user-x'), foreign ? 'ФИО в документе не совпадает с профилем студента' : 'ФИО в документе не совпадает с вашим профилем'),
+      h('div', { class: 'muted', style: { fontSize: '13px' } }, `В документе: «${doc.name_check.document}». В профиле: «${doc.name_check.profile}».`)) : null;
 
     const rows = Object.entries(a.fields).map(([key, value]) => fieldRow(key, value, a, kind));
     const total = rows.length;
     const verifiedCount = Object.keys(a.fields).filter((k) => doc.verified[k]).length;
-    const approveBtn = doc.approved
-      ? h('button', { class: 'btn', onclick: () => approve(false), title: 'Отменить одобрение' }, icon('badge-check'), doc.approved_by === 'auto' ? 'Одобрен автоматически' : 'Одобрен')
-      : h('button', { class: 'btn primary', onclick: () => approve(true) }, icon('check-check'), 'Одобрить');
+    const foot = [];
+    if (can.submit) foot.push(h('button', { class: 'btn primary', onclick: openSubmit }, icon('send'), state === 'returned' ? 'Отправить снова' : 'Отправить в деканат'));
+    if (can.decide) {
+      if (state === 'approved' || state === 'returned') foot.push(h('button', { class: 'btn', onclick: () => decide(null) }, icon('rotate-ccw'), 'Отменить решение'));
+      else foot.push(h('button', { class: 'btn', onclick: openReturn }, icon('undo-2'), 'Вернуть'),
+        h('button', { class: 'btn primary', onclick: () => decide('approved') }, icon('check-check'), 'Одобрить'));
+    }
     const fieldsPane = h('section', { class: 'pane' },
       h('div', { class: 'pane-head' }, h('h2', { class: 'grow' }, 'Сведения'), typeSelect,
         h('span', { class: 'chip' + (a.validation.status === 'document_ok' ? ' ok' : ' warn') }, `${doc.found}/${doc.total}`)),
-      h('div', { class: 'pane-body' }, verdict, h('div', { class: 'fields' }, ...rows),
+      h('div', { class: 'pane-body' }, stateBanner(state, foreign), nameWarn, verdict, h('div', { class: 'fields' }, ...rows),
         h('p', { class: 'subtle', style: { padding: '4px 16px 14px', fontSize: '12px' } },
-          'Значения прочитаны автоматически. «Проверьте» — там, где модель не уверена. Галочкой отмечайте сверенные с оригиналом поля.')),
-      h('div', { class: 'pane-foot' }, h('span', { class: 'muted grow', style: { fontSize: '12.5px' } }, `Сверено вручную: ${verifiedCount} из ${total}`),
-        h('button', { class: 'btn ghost sm', onclick: () => summary(a), title: 'Скачать сводку' }, icon('file-text'), 'Сводка'), approveBtn));
+          staff ? 'Значения прочитаны автоматически. «Проверьте» — там, где распознавание не уверено. Галочкой отмечайте сверенные с оригиналом поля.'
+            : 'Значения прочитаны автоматически. «Проверьте» — там, где распознавание не уверено: сверьте с оригиналом.')),
+      h('div', { class: 'pane-foot' }, h('span', { class: 'muted grow', style: { fontSize: '12.5px' } },
+          staff && foreign ? `Сверено вручную: ${verifiedCount} из ${total}` + (doc.attempts > 1 ? ` · попытка ${doc.attempts}` : '') : doc.state_name),
+        ...foot));
 
     if (!chatPane) {  // the chat keeps its state across redraws of the other panes
       chatPane = h('section', { class: 'pane chat' });
@@ -184,7 +209,7 @@ export async function render(app, slug) {
     const row = h('div', { class: 'frow' + (missing ? ' missing' : '') + (verified ? ' verified' : ''), 'data-field': key },
       h('div', { style: { minWidth: 0 } }, h('div', { class: 'k' }, LABELS[key] || key),
         h('div', { class: 'row', style: { flexWrap: 'wrap', gap: '6px' } }, h('span', { class: 'v' }, missing && !mark ? 'не найдено' : displayValue(value)), ...chips)),
-      h('div', { class: 'tools' }, ask, tick));
+      h('div', { class: 'tools' }, ask, isStaff() && doc.owner ? tick : null));
     row.addEventListener('mouseenter', () => focus(key, false));
     row.addEventListener('click', () => focus(key, true));
     return row;
@@ -200,29 +225,115 @@ export async function render(app, slug) {
     }
   }
 
-  async function approve(value) {
+  function stateBanner(state, foreign) {
+    const when = (t) => t ? new Date(t * 1000).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
+    const block = (cls, iconName, title, ...lines) => h('div', { class: 'verdict ' + cls },
+      h('div', { class: 'verdict-title' }, icon(iconName), title), ...lines.filter(Boolean).map((l) => typeof l === 'string' ? h('div', { class: 'muted', style: { fontSize: '13px' } }, l) : l));
+    const quote = (text, author) => text ? h('blockquote', { class: 'quote' }, text, author ? h('div', { class: 'subtle', style: { fontSize: '12px', marginTop: '4px' } }, author) : null) : null;
+    if (foreign) {
+      const who = `${doc.owner.name || 'Студент'}${doc.owner.group ? ' · ' + doc.owner.group : ''} · ${doc.owner.email}`;
+      const head = block(state === 'approved' ? 'ok' : state === 'returned' ? 'warn' : state === 'closed' ? 'bad' : 'info',
+        { submitted: 'inbox', review: 'eye', approved: 'badge-check', returned: 'undo-2', closed: 'archive-x' }[state] || 'inbox',
+        doc.state_name, who, doc.submitted_at ? `Отправлено ${when(doc.submitted_at)}${doc.attempts > 1 ? ` · попытка ${doc.attempts}` : ''}` : '',
+        quote(doc.student_comment, 'комментарий студента'), state !== 'review' && state !== 'submitted' ? quote(doc.decision_comment, 'комментарий деканата') : null);
+      return head;
+    }
+    if (state === 'draft') return block('info', 'file-pen', 'Черновик — его видите только вы',
+      'Проверьте сведения. Если что-то не так — замените файл или поправьте его в редакторе (меню «⋯»), затем отправьте в деканат.');
+    if (state === 'submitted') return block('info', 'send', `Отправлено в деканат ${when(doc.submitted_at)}`, 'Сотрудник деканата скоро возьмёт заявку на рассмотрение.');
+    if (state === 'review') return block('info', 'eye', 'На рассмотрении в деканате', 'Решение появится здесь — мы пришлём уведомление.');
+    if (state === 'approved') return block('ok', 'badge-check', 'Одобрено деканатом', quote(doc.decision_comment));
+    if (state === 'returned') return block('warn', 'undo-2', 'Возвращено на доработку', quote(doc.decision_comment, 'комментарий деканата'),
+      'Исправьте документ — замените файл или поправьте его в редакторе — и отправьте снова.');
+    if (state === 'closed') return block('bad', 'archive-x', 'Заявка закрыта деканатом', quote(doc.decision_comment));
+    return null;
+  }
+
+  function openSubmit() {
+    const comment = h('textarea', { class: 'input', rows: 3, placeholder: 'Комментарий для деканата (необязательно)', style: { height: 'auto', padding: '10px 12px' } });
+    const warn = doc.submit_warning;
+    const m = modal({
+      title: warn ? 'Документ проверен, но есть замечания' : 'Отправить в деканат?',
+      body: [warn ? h('div', { class: 'verdict warn', style: { margin: '0 0 14px' } }, h('div', { class: 'verdict-title' }, icon('triangle-alert'), 'Скорее всего, заявление вернут'),
+          h('div', { style: { fontSize: '13.5px', lineHeight: '1.55' } }, warn))
+        : h('p', { class: 'muted', style: { marginBottom: '14px' } }, 'Все обязательные сведения найдены. Документ увидит сотрудник деканата и примет решение.'), comment],
+      actions: [h('button', { class: 'btn', onclick: () => m.close() }, warn ? 'Исправить документ' : 'Отмена'),
+        h('button', { class: 'btn primary', onclick: async (e) => {
+          e.target.disabled = true;
+          try {
+            doc = await api(`/api/documents/${slug}/submit`, { method: 'POST', body: { comment: comment.value } });
+            m.close(); draw(); ok('Отправлено в деканат', 'Решение появится в истории заявки.');
+          } catch (err) { e.target.disabled = false; showError(err); }
+        } }, icon('send'), warn ? 'Всё равно отправить' : 'Отправить')],
+    });
+  }
+
+  function openReturn() {
+    const missing = doc.analysis.validation.missing_fields;
+    const comment = h('textarea', { class: 'input', rows: 4, style: { height: 'auto', padding: '10px 12px' } });
+    comment.value = missing.length ? `Не хватает: ${missing.map((k) => LABELS[k].toLowerCase()).join(', ')}. Исправьте документ и отправьте снова.` : '';
+    const m = modal({ title: 'Вернуть на доработку', body: [h('p', { class: 'muted', style: { marginBottom: '10px' } }, 'Студент увидит этот комментарий в своей заявке.'), comment],
+      actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Отмена'),
+        h('button', { class: 'btn primary', onclick: () => { if (!comment.value.trim()) return showError({ title: 'Напишите комментарий', detail: 'Объясните студенту, что исправить.' }); m.close(); decide('returned', comment.value.trim()); } }, icon('undo-2'), 'Вернуть')] });
+    comment.focus();
+  }
+
+  function openClose() {
+    const comment = h('textarea', { class: 'input', rows: 3, style: { height: 'auto', padding: '10px 12px' }, placeholder: 'Причина, например: превышено число попыток' });
+    const m = modal({ title: 'Закрыть заявку?', body: [h('p', { class: 'muted', style: { marginBottom: '10px' } },
+        `Студент больше не сможет отправлять документы по этой заявке.${doc.attempts ? ` Попыток отправки: ${doc.attempts}.` : ''}`), comment],
+      actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Отмена'),
+        h('button', { class: 'btn danger', onclick: async () => {
+          try { doc = await api(`/api/documents/${slug}/close`, { method: 'POST', body: { comment: comment.value } }); m.close(); draw(); info('Заявка закрыта'); }
+          catch (e) { showError(e); }
+        } }, icon('archive-x'), 'Закрыть заявку')] });
+  }
+
+  async function openHistory() {
+    let data;
+    try { data = await api(`/api/documents/${slug}/history`); } catch (e) { return showError(e); }
+    const ICONS = { uploaded: 'upload', processed: 'scan-text', submitted: 'send', review: 'eye', approved: 'badge-check', auto_approved: 'badge-check',
+      returned: 'undo-2', reset: 'rotate-ccw', replaced: 'file-up', edited: 'pen-tool', closed: 'archive-x', type_changed: 'shapes' };
+    const items = data.events.map((e) => {
+      const d = e.detail || {};
+      const extra = [d.comment && `«${d.comment}»`, d.filename && e.kind !== 'uploaded' ? d.filename : null, d.found && `найдено ${d.found}`,
+        d.version && e.kind !== 'uploaded' ? `версия ${d.version}` : null, d.ops].filter(Boolean).join(' · ');
+      return h('li', { class: 'tl-item ' + e.kind }, h('span', { class: 'tl-dot' }, icon(ICONS[e.kind] || 'circle')),
+        h('div', {}, h('div', { style: { fontWeight: 560 } }, e.title,
+            h('span', { class: 'subtle', style: { fontWeight: 400, marginLeft: '8px', fontSize: '12.5px' } }, new Date(e.at * 1000).toLocaleString('ru-RU'))),
+          h('div', { class: 'muted', style: { fontSize: '12.5px' } }, (e.who ? `${e.who}${e.role === 'student' ? ' (студент)' : e.role ? ' (деканат)' : ''}` : 'система') + (extra ? ' · ' + extra : ''))));
+    });
+    const versions = data.versions.length ? h('div', { style: { marginTop: '14px' } }, h('div', { class: 'label' }, 'Прежние версии файла'),
+      ...data.versions.map((v) => h('a', { class: 'btn ghost sm', href: `/api/documents/${slug}/versions/${v.n}/file`, target: '_blank' }, icon('file-clock'),
+        `Версия ${v.n}: ${v.filename}${v.total ? ` · ${v.found}/${v.total}` : ''}`))) : null;
+    const m = modal({ title: 'История заявки', wide: true, body: [h('ul', { class: 'timeline' }, ...items), versions],
+      actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Закрыть')] });
+  }
+
+  function pickReplacement() {
+    const input = h('input', { type: 'file', accept: '.pdf,.png,.jpg,.jpeg', hidden: true });
+    input.addEventListener('change', async () => {
+      if (!input.files[0]) return;
+      const form = new FormData();
+      form.append('file', input.files[0], input.files[0].name);
+      try { doc = await api(`/api/documents/${slug}/replace`, { method: 'POST', form }); info('Файл заменён', 'Проверяем новую версию — это займёт несколько секунд.'); load(); }
+      catch (e) { showError(e); }
+    });
+    document.body.append(input); input.click(); setTimeout(() => input.remove(), 60000);
+  }
+
+  async function decide(decision, comment = null) {
     try {
-      const s = await api(`/api/documents/${slug}/approve`, { method: 'POST', body: { approved: value } });
-      Object.assign(doc, s); draw();
-      value ? ok('Документ одобрен', 'Отметка сохранена в истории.') : info('Одобрение снято');
+      doc = await api(`/api/documents/${slug}/approve`, { method: 'POST', body: { decision, comment } });
+      draw();
+      decision === 'approved' ? ok('Документ одобрен', 'Студент увидит решение в своей заявке.')
+        : decision === 'returned' ? info('Документ возвращён', 'Студент увидит ваш комментарий.') : info('Решение отменено');
     } catch (e) { showError(e); }
   }
 
   async function remove() {
     if (!confirm(`Удалить «${doc.filename}»? Это действие нельзя отменить.`)) return;
     try { await api(`/api/documents/${slug}`, { method: 'DELETE' }); ok('Документ удалён'); navigate('/history'); } catch (e) { showError(e); }
-  }
-
-  function summary(a) {
-    const lines = ['Онлайн-деканат — предварительная проверка', `Файл: ${doc.filename}`, `Тип: ${TYPES[a.document_type]}`, `Ссылка: ${location.href}`,
-      `Дата: ${new Date().toLocaleString('ru-RU')}`, '',
-      a.validation.status === 'document_ok' ? 'Итог: обязательные сведения найдены.' : `Итог: не хватает — ${a.validation.missing_fields.map((k) => LABELS[k]).join(', ')}.`,
-      `Статус: ${doc.approved ? 'одобрен' : 'не одобрен'}`, '', 'Сведения:',
-      ...Object.entries(a.fields).map(([k, v]) => `— ${LABELS[k]}: ${displayValue(v)}${doc.verified[k] ? ' (сверено)' : ''}`), '',
-      'Результат получен автоматически. Окончательное решение принимает сотрудник деканата (п. 1.3).'];
-    const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' }));
-    h('a', { href: url, download: doc.filename.replace(/\.[^.]+$/, '') + ' — сводка.txt' }).click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   const onUpdated = (e) => { if (e.detail.slug === slug && doc?.status !== 'done') load(true); };
