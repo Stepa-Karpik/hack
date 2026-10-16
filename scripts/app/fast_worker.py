@@ -154,7 +154,8 @@ def missing_places(fields, analysis, size):
     """Where a missing mark is expected: the printed caption «(подпись)» / «М.П.» on the page."""
     import re
     width, height = size
-    places = {'signature_present': r'\(\s*подп\w{0,4}|подпись\s+(студента|руководителя|сотрудника)',  # OCR may read «подпнсь»
+    # the small italic caption under a signature line is often misread («(тодтutcъ)», «{нодuсъ)»): a short bracketed word
+    places = {'signature_present': r'\(\s*подп\w{0,4}|подпись\s+(студента|руководителя|сотрудника)|^\s*[({\[]\s*\S{4,9}\s*[)}\]]\s*$',
               'seal_present': r'\bм\s*\.?\s*п\s*\.?\b|место\s+печати'}
     regions = []
     for key, pattern in places.items():
@@ -186,6 +187,13 @@ def read(path, output, requested, quick=False, custom_types=None):
         pages, analysis = analyze(data, path.name, document_type=kind, gpu=False, orientation=orientation)
     finally:
         os.environ['DEKANAT_DETECT_SIDE'] = side
+    # a bold printed heading (a company name in the letterhead) is not a handwritten signature or a stamp
+    page0 = [l for l in analysis['ocr']['lines'] if l.get('page', 0) == 0]
+    for mark in ('signature', 'stamp'):
+        f = (analysis.get('fields') or {}).get(mark) or {}
+        box = (f.get('evidence') or {}).get('bbox')
+        if f.get('value') is True and box and custom_mod.over_text(box, page0):
+            f['value'] = False
     detected = analysis.get('type')
     # a type from the constructor: chosen by the user, or its title phrase is on the page
     custom_types = custom_types or []
