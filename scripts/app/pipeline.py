@@ -147,6 +147,7 @@ def analyze_fast(row, kind, custom=None):
         'fields': fields, 'validation': validation, 'audit': audit, 'confidence': confidence, 'review': review,
         'recovered_from_prose': [], 'mark_boxes': mark_boxes, 'ocr_text': row.get('ocr_text', ''),
         'raw_ocr': row.get('ocr_text', ''), 'layout_edits': [], 'engine': 'cpu-fast',
+        'quality': row.get('quality') or {'readable': True, 'warnings': []},
         'model': {'decoder': 'cpu-fast', 'seconds': row.get('seconds', 0), 'token_budget_reached': False, 'visual_passes': 1},
     }
 

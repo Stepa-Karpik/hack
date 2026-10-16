@@ -54,6 +54,9 @@ def submit_warning(analysis, name_check=None, labels=None):
     parts = []
     validation = analysis.get('validation') or {}
     missing = validation.get('missing_fields') or []
+    quality = analysis.get('quality') or {}
+    if quality.get('readable') is False:
+        parts.append('Снимок читается плохо: часть сведений могла не распознаться, хотя в документе она есть.')
     if not analysis.get('type_matches', True):
         parts.append('Мы не узнали в файле выбранный тип документа, поэтому сведения могли не найтись.')
     if missing:

@@ -96,7 +96,58 @@ def live_overlay(analysis, regions, pages):
                      'quad': [to_frame(x0, y0), to_frame(x1, y0), to_frame(x1, y1), to_frame(x0, y1)]})
     perspective = meta.get('perspective') or {}
     sheet = [[float(x / in_w), float(y / in_h)] for x, y in perspective.get('corners_input', [])] if perspective.get('applied') else None
-    return {'regions': live, 'sheet': sheet, 'warnings': (meta.get('quality') or {}).get('warnings') or []}
+    share = None
+    if sheet and len(sheet) >= 3:  # shoelace area of the sheet outline, as a share of the frame
+        share = round(abs(sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(sheet, sheet[1:] + sheet[:1]))) / 2, 3)
+    return {'regions': live, 'sheet': sheet, 'sheet_share': share, 'warnings': (meta.get('quality') or {}).get('warnings') or []}
+
+
+PERIODS = {'academic_leave_application': ('leave_start', 'leave_end', r'отпуск'),
+           'internship_certificate': ('internship_start', 'internship_end', r'практик'),
+           'study_certificate': ('study_start', 'study_end', r'обучени|обучает')}
+REASONS = r'по\s+(семейным\s+обстоятельствам|медицинским\s+показаниям|состоянию\s+здоровья)'
+
+
+def period_fallback(fields, text, kind):
+    """A period written in prose and read out of order by OCR («отпуск 15.10.2026 по с 14.10.2027»): the first two
+    dates after the anchor word, in increasing order. Only fills fields that are still missing."""
+    import re
+    from scripts.participantkit.format_v1 import DATE, MISSING, iso
+    changed = False
+    flat = re.sub(r'\s+', ' ', text or '')
+    if kind in PERIODS:
+        start, end, anchor = PERIODS[kind]
+        if fields.get(start) == MISSING and fields.get(end) == MISSING:
+            for m in re.finditer(anchor, flat, re.I):
+                dates = [iso(d) for d in re.findall(DATE, flat[m.end():m.end() + 160], re.I)]
+                dates = [d for d in dates if d != MISSING]
+                if len(dates) >= 2 and dates[0] < dates[1]:
+                    fields[start], fields[end] = dates[0], dates[1]
+                    changed = True
+                    break
+    if kind == 'academic_leave_application' and fields.get('leave_reason') == MISSING:
+        m = re.search(REASONS, flat, re.I)
+        if m:
+            fields['leave_reason'] = 'по ' + re.sub(r'\s+', ' ', m.group(1)).lower()
+            changed = True
+    return changed
+
+
+UNREADABLE = ('Текст на снимке читается плохо, поэтому часть сведений могла не найтись. Переснимите документ ближе, '
+              'при ровном свете и без бликов, или загрузите скан.')
+
+
+def readability(analysis):
+    """Recognizer confidence over the text lines: a photo of a screen or a blurred frame reads ~0.3, a usable photo 0.8+."""
+    lines = [l for l in analysis['ocr']['lines'] if len(l['text']) >= 4 and isinstance(l.get('confidence'), (int, float))]
+    warnings = list(dict.fromkeys(w for page in analysis.get('preprocessing') or [] for w in (page.get('quality') or {}).get('warnings') or []))
+    if not lines:
+        return {'mean_confidence': None, 'low_share': None, 'readable': False, 'warnings': warnings + [UNREADABLE]}
+    mean = sum(l['confidence'] for l in lines) / len(lines)
+    low = sum(1 for l in lines if l['confidence'] < 0.4) / len(lines)
+    readable = mean >= 0.5 and low <= 0.4  # chosen on 9 photos/scans: unreadable 0.31/0.74, usable 0.68-0.88 / <=0.10
+    return {'mean_confidence': round(mean, 3), 'low_share': round(low, 3), 'readable': readable,
+            'warnings': warnings + ([] if readable else [UNREADABLE])}
 
 
 def missing_places(fields, analysis, size):
@@ -170,6 +221,10 @@ def read(path, output, requested, quick=False, custom_types=None):
             if isinstance(value, str) and value != 'не найдено':
                 value = normalize_script(value, key)
                 result['fields'][key] = normalize_quotes(value) if key in QUOTED else value
+        if period_fallback(result['fields'], row['ocr_text'], official):
+            from scripts.participantkit.format_v1 import validate
+            from scripts.participantkit.service import load_config
+            result['validation'] = validate(result['fields'], official, load_config())
         width, height = pages[0].size if pages else (1, 1)
         statuses, confidence, regions = {}, {}, []
         for key, value in result['fields'].items():
@@ -193,12 +248,15 @@ def read(path, output, requested, quick=False, custom_types=None):
         regions += missing_places(result['fields'], analysis, size)
         row.update({'fields': result['fields'], 'validation': result['validation'], 'statuses': statuses,
                     'confidence': confidence, 'regions': regions})
+    row['quality'] = readability(analysis)
     if (custom or detected) and pages:  # rectified page = the geometry of the regions
         image = pages[0].convert('RGB').copy()
         image.thumbnail((1700, 2200))
         image.save(output.with_name('preview.png'))
     if quick:
         row['live'] = live_overlay(analysis, row.get('regions') or [], pages)
+        row['live']['warnings'] = row['quality']['warnings']
+        row['live']['readable'] = row['quality']['readable']
     row['seconds'] = round(time.perf_counter() - started, 3)
     output.write_text(json.dumps({'engine': 'cpu-fast', 'rows': [row]}, ensure_ascii=False, default=lambda v: v.tolist()),
                       encoding='utf-8')

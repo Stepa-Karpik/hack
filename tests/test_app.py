@@ -99,6 +99,8 @@ def test_remote_agent_link_and_cpu_fallback(tmp_path, monkeypatch):
     monkeypatch.setattr(server, 'FastReader', FakeReader)
     monkeypatch.setattr(processing.Processor, '_preview', lambda self, source, folder: (folder / 'preview.png').write_bytes(b'png'))
     (tmp_path / 'token').write_text('secret-token')
+    from scripts.app import remote
+    monkeypatch.setattr(remote.RemoteReader, 'RECONNECT_WAIT', 0.2)
     args = Namespace(base='b', head='h', adapter=None, work=str(tmp_path), assistant_model=None, cpu=True, port=0,
                      agent_token_file=str(tmp_path / 'token'))
     state = server.App(args)
@@ -329,3 +331,43 @@ def test_group_code_misread_one():
     assert normalize_script('ИВТ-2]', 'group') == 'ИВТ-21'
     assert normalize_script('ЭК-|2', 'group') == 'ЭК-12'
     assert normalize_script('ИВТ-21', 'group') == 'ИВТ-21'
+
+
+def test_remote_reader_waits_for_reconnecting_agent(tmp_path):
+    import threading
+    from scripts.app import remote
+
+    class Broker:
+        started_at, disconnected_at, up = time.time(), None, False
+        def connected(self):
+            return self.up
+        def call(self, task, payload, timeout=180):
+            return {'output': '{"rows": []}'}
+
+    class Fallback:
+        used = False
+        def run(self, *a, **k):
+            Fallback.used = True
+
+    broker = Broker()
+    reader = remote.RemoteReader(broker, Fallback)
+    threading.Timer(0.6, lambda: setattr(broker, 'up', True)).start()
+    reader.run('ocr', tmp_path / 'x.png', tmp_path / 'out.json') if (tmp_path / 'x.png').write_bytes(b'x') else None
+    assert reader.last_device == 'agent' and not Fallback.used
+    broker.up, broker.started_at = False, time.time() - 3600  # long offline: no waiting, the server reads itself
+    t = time.time(); reader.run('ocr', tmp_path / 'x.png', tmp_path / 'out.json')
+    assert Fallback.used and time.time() - t < 0.5
+
+
+def test_period_fallback_and_readability():
+    from scripts.app.fast_worker import period_fallback, readability
+    fields = {'leave_start': 'не найдено', 'leave_end': 'не найдено', 'leave_reason': 'не найдено'}
+    text = 'Прошу предоставить мне академический отпуск 15.10.2026 по\nc\n14.10.2027 по семейным обстоятельствам'
+    assert period_fallback(fields, text, 'academic_leave_application')
+    assert fields == {'leave_start': '2026-10-15', 'leave_end': '2027-10-14', 'leave_reason': 'по семейным обстоятельствам'}
+    kept = {'leave_start': '2026-01-01', 'leave_end': 'не найдено', 'leave_reason': 'по болезни'}
+    assert not period_fallback(dict(kept), text, 'academic_leave_application')  # found values are never replaced
+    line = lambda conf: {'text': 'строка текста', 'confidence': conf, 'bbox': [0, 0, 1, 1]}
+    assert readability({'ocr': {'lines': [line(0.9)] * 10}, 'preprocessing': []})['readable']
+    bad = readability({'ocr': {'lines': [line(0.2)] * 8 + [line(0.9)] * 2}, 'preprocessing': []})
+    assert not bad['readable'] and 'читается плохо' in bad['warnings'][-1]

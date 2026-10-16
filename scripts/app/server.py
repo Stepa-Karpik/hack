@@ -267,6 +267,7 @@ class App:
             out['analysis'] = {k: analysis[k] for k in ('document_type', 'detected_type', 'type_matches', 'fields',
                                                         'validation', 'review', 'confidence', 'ocr_text', 'model',
                                                         'recovered_from_prose')}
+            out['analysis']['quality'] = analysis.get('quality') or {'readable': True, 'warnings': []}
             regions = folder / 'regions.json'
             out['regions'] = json.loads(regions.read_text(encoding='utf-8')) if regions.exists() else {'status': 'pending', 'regions': []}
             owner = user if doc['user_id'] == user['id'] else (self.store.user(doc['user_id']) or {})
@@ -737,6 +738,7 @@ class App:
                              'fields': {k: v for k, v in fields.items() if v not in (None, 'не найдено')},
                              'missing': (row.get('validation') or {}).get('missing_fields', []),
                              'regions': live['regions'], 'sheet': live['sheet'], 'warnings': live['warnings'],
+                             'sheet_share': live.get('sheet_share'), 'readable': live.get('readable', True),
                              'seconds': row.get('seconds')})
 
     async def invite_info(self, request):

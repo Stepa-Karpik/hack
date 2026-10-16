@@ -147,6 +147,12 @@ export async function render(app, slug) {
       h('div', { class: 'verdict-title' }, icon('user-x'), foreign ? 'ФИО в документе не совпадает с профилем студента' : 'ФИО в документе не совпадает с вашим профилем'),
       h('div', { class: 'muted', style: { fontSize: '13px' } }, `В документе: «${doc.name_check.document}». В профиле: «${doc.name_check.profile}».`)) : null;
 
+    const unreadable = a.quality && a.quality.readable === false ? h('div', { class: 'verdict bad' },
+      h('div', { class: 'verdict-title' }, icon('scan-eye'), 'Снимок читается плохо'),
+      h('div', { class: 'muted', style: { fontSize: '13px' } }, foreign
+        ? 'Распознавание не уверено в большей части текста — сверьте сведения с изображением.'
+        : 'Часть сведений могла не найтись, хотя в документе она есть. Переснимите документ ближе, при ровном свете и без бликов (фото экрана читается хуже бумаги), или загрузите скан.'),
+      can.replace && !foreign ? h('div', { style: { marginTop: '8px' } }, h('button', { class: 'btn sm', onclick: pickReplacement }, icon('refresh-cw'), 'Заменить файл')) : null) : null;
     const rows = Object.entries(a.fields).map(([key, value]) => fieldRow(key, value, a, kind));
     const total = rows.length;
     const verifiedCount = Object.keys(a.fields).filter((k) => doc.verified[k]).length;
@@ -160,7 +166,7 @@ export async function render(app, slug) {
     const fieldsPane = h('section', { class: 'pane' },
       h('div', { class: 'pane-head' }, h('h2', { class: 'grow' }, 'Сведения'), typeSelect,
         h('span', { class: 'chip' + (a.validation.status === 'document_ok' ? ' ok' : ' warn') }, `${doc.found}/${doc.total}`)),
-      h('div', { class: 'pane-body' }, stateBanner(state, foreign), nameWarn, verdict, h('div', { class: 'fields' }, ...rows),
+      h('div', { class: 'pane-body' }, stateBanner(state, foreign), unreadable, nameWarn, verdict, h('div', { class: 'fields' }, ...rows),
         h('p', { class: 'subtle', style: { padding: '4px 16px 14px', fontSize: '12px' } },
           staff ? 'Значения прочитаны автоматически. «Проверьте» — там, где распознавание не уверено. Галочкой отмечайте сверенные с оригиналом поля.'
             : 'Значения прочитаны автоматически. «Проверьте» — там, где распознавание не уверено: сверьте с оригиналом.')),

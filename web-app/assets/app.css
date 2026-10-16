@@ -300,7 +300,7 @@ textarea.input{height:auto;padding:10px 12px;resize:none}
 .cam-hint svg{width:16px;height:16px}
 .cam-hint.warn{background:rgba(214,120,20,.82)}
 .cam-hint.ok{background:rgba(31,157,106,.82)}
-.cam-shoot{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.cam-actions{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:max-content;max-width:calc(100% - 24px)}.cam-actions .btn{box-shadow:0 6px 24px rgba(0,0,0,.35)}.cam-native{background:rgba(20,20,28,.72);color:#fff;border-color:rgba(255,255,255,.18);backdrop-filter:blur(6px)}
 .cam-side{padding:16px;display:flex;flex-direction:column}
 .cam-type{padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:6px}
 .cam-fields{display:flex;flex-direction:column}

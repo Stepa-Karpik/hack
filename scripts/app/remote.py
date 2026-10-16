@@ -30,6 +30,8 @@ class Broker:
         self.pending = {}
         self.ids = itertools.count(1)
         self.connected_at = None
+        self.started_at = time.time()
+        self.disconnected_at = None
 
     def connected(self):
         return self.socket is not None
@@ -74,7 +76,7 @@ class Broker:
             pass
         finally:
             if self.socket is ws:
-                self.socket = None
+                self.socket, self.disconnected_at = None, time.time()
                 for future, _ in list(self.pending.values()):
                     if not future.done():
                         future.set_exception(AgentOffline('agent disconnected'))
@@ -108,11 +110,34 @@ class RemoteReader:
         self.lock = threading.Lock()
         self.last_device = None
 
+    # after a server restart or a dropped link the agent usually comes back within seconds: waiting for it is
+    # faster than reading on the server CPU (~14 s per page)
+    RECONNECT_WINDOW = 60
+    RECONNECT_WAIT = 20
+
     def ensure(self):
-        pass  # the CPU fallback is started lazily, only if ever needed
+        """Load the server-CPU fallback in the background, so an offline agent never costs a cold start."""
+        try:
+            self._fallback().ensure()
+        except Exception:
+            pass
+
+    def _fallback(self):
+        with self.lock:
+            if self.fallback is None:
+                self.fallback = self.fallback_factory()
+        return self.fallback
+
+    def _wait_for_agent(self):
+        recent = max(self.broker.started_at, self.broker.disconnected_at or 0)
+        deadline = time.time() + self.RECONNECT_WAIT
+        while not self.broker.connected() and time.time() - recent < self.RECONNECT_WINDOW and time.time() < deadline:
+            time.sleep(0.5)
+        return self.broker.connected()
+
 
     def run(self, task, source, output, **extra):
-        if self.broker.connected():
+        if self.broker.connected() or self._wait_for_agent():
             try:
                 data = self.broker.call(task, {'filename': Path(source).name, **extra,
                                                'file': base64.b64encode(Path(source).read_bytes()).decode()}, timeout=240)
@@ -129,10 +154,7 @@ class RemoteReader:
             # document. Signature/seal boxes still come from the recognition pass.
             Path(output).write_text(json.dumps({'raw': '', 'skipped': 'gpu agent offline'}), encoding='utf-8')
             return
-        with self.lock:
-            if self.fallback is None:
-                self.fallback = self.fallback_factory()
-        self.fallback.run(task, source, output, **extra)
+        self._fallback().run(task, source, output, **extra)
         self.last_device = 'server-cpu'
 
 
