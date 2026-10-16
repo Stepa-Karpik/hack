@@ -38,7 +38,7 @@ flowchart LR
     V4[v4b: значения полей<br/>192 train / 96 val+test] --> L4[LoRA v4]
     N5[v5: естественные страницы<br/>360 / 36 / 48] --> L5[LoRA v5 ✓]
     L4 --> L5
-    V4 -. 120 стр. повторения .-> L5
+    V4 -.->|120 страниц повторения| L5
     M1[marks-v1<br/>360 / 60 / 60] --> PH[патч-голова ✓]
     V2 --> PH
     RM[unified-real-marks-v1<br/>реальные подписи] --> PH
@@ -128,9 +128,9 @@ python -m scripts.unified.select_mark_rules --scores work/marks-v1/head/heldout-
 | LoRA v5, 240 шагов | 28 мин, пик памяти 5,7 ГБ |
 | Распознавание одной страницы | 3,5 с |
 
-## Прежние генераторы
+## Генераторы конвейера
 
-Генераторы первого поколения (EasyOCR + YOLO) описаны в [legacy.md](legacy.md):
+Данные для моделей конвейера ([pipeline.md](pipeline.md)):
 
 - `dekanat/synthetic.py` — документы;
 - `scripts/generate_data.py` — наборы данных;

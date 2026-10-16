@@ -38,7 +38,7 @@ Authorization: Bearer dk_live_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 | Поле | |
 | --- | --- |
 | `files` | Один или несколько файлов, до 20. PNG, JPG или одностраничный PDF, до 10 МБ каждый |
-| `document_type` | `auto` (по умолчанию), `study_certificate`, `academic_leave_application`, `internship_certificate` |
+| `document_type` | `auto` (по умолчанию), `study_certificate`, `academic_leave_application`, `internship_certificate` или ключ типа из конструктора (`GET /types`) |
 
 ```bash
 curl -X POST https://dekanat.karpovprod.ru/api/v1/documents \
@@ -116,19 +116,77 @@ curl -X POST https://dekanat.karpovprod.ru/api/v1/documents \
 
 `GET /documents/{slug}/preview` — PNG для просмотра. `GET /documents/{slug}/file` — исходный файл.
 
-`DELETE /documents/{slug}` — удалить документ и его файлы.
+`DELETE /documents/{slug}` — удалить документ и его файлы. Студент удаляет только свой черновик, сотрудник — закрытую заявку.
 
 ### Сменить тип
 
-`POST /documents/{slug}/type` с телом `{"document_type": "study_certificate"}`. Поля пересчитываются из уже прочитанного текста, повторного распознавания нет. Сверка и одобрение сбрасываются.
+`POST /documents/{slug}/type` с телом `{"document_type": "study_certificate"}`. Конвейер перечитывает документ с выбранным типом, цельная модель пересчитывает поля из уже прочитанного текста. Сверка и решение сбрасываются.
 
 ### Отметить поле как сверенное
 
-`POST /documents/{slug}/verify` с телом `{"field": "student_name", "verified": true}` → `{"verified": {...}}`.
+`POST /documents/{slug}/verify` с телом `{"field": "student_name", "verified": true}` → `{"verified": {...}}`. Только для сотрудников деканата.
 
-### Одобрить
+## Заявки
 
-`POST /documents/{slug}/approve` с телом `{"approved": true}`. Через API документ отмечается `approved_by: "api"`. Значение `false` снимает одобрение.
+| Запрос | Кто | Действие |
+| --- | --- | --- |
+| `POST /documents/{slug}/submit` `{"comment": "…"}` | Владелец | Отправить черновик или возвращённую заявку в деканат |
+| `GET /documents/{slug}?open=1` | Сотрудник | Открыть заявку: состояние `submitted` → `review` |
+| `POST /documents/{slug}/approve` `{"decision": "approved"}` | Сотрудник | Одобрить |
+| `POST /documents/{slug}/approve` `{"decision": "returned", "comment": "…"}` | Сотрудник | Вернуть на доработку; комментарий обязателен |
+| `POST /documents/{slug}/approve` `{"decision": null}` | Сотрудник | Отменить решение |
+| `POST /documents/{slug}/replace` (multipart `file`) | Владелец, сотрудник | Заменить файл в той же заявке; прежняя версия сохраняется |
+| `POST /documents/{slug}/close` `{"comment": "…"}` | Сотрудник | Закрыть заявку |
+| `GET /documents/{slug}/history` | Владелец, сотрудник | Журнал событий и список версий |
+| `GET /documents/{slug}/versions/{n}/file` | Владелец, сотрудник | Файл версии `n` |
+| `GET /documents/{slug}/protocol.pdf` | Владелец, сотрудник | PDF-протокол проверки |
+| `GET /staff/export.xlsx?type=&group=&state=` | Сотрудник | Выгрузка заявок и журнала в Excel |
+
+Состояния: `draft`, `submitted`, `review`, `approved`, `returned`, `closed`. Карточка документа (`GET /documents/{slug}`) содержит `state`, `attempts`, `version`, `submit_warning` (текст предупреждения или `null`), `name_check` и `can` — какие действия доступны текущему пользователю.
+
+## Типы документов
+
+| Запрос | Кто | Действие |
+| --- | --- | --- |
+| `GET /types` | Все | Встроенные и добавленные типы с полями |
+| `POST /admin/types` | Суперадмин | Создать тип |
+| `PUT /admin/types/{key}` | Суперадмин | Изменить тип |
+| `DELETE /admin/types/{key}` | Суперадмин | Удалить тип (встроенные удалить нельзя) |
+
+Тело создания:
+
+```json
+{"title": "Справка о составе семьи", "keywords": ["справка о составе семьи"],
+ "fields": [{"label": "Номер справки", "variants": ["Номер справки", "№"], "kind": "number", "required": true},
+            {"label": "Дата выдачи", "kind": "date"}],
+ "signature": true, "seal": true, "rule": "7.1", "rule_text": "…"}
+```
+
+`kind`: `text`, `name`, `date`, `number`.
+
+## Живая камера
+
+`POST /live/scan` — `multipart/form-data` с полем `frame` (JPEG до 4 МБ). Кадр распознаётся в быстром режиме и не сохраняется. Ответ:
+
+```json
+{"document_type": "academic_leave_application", "type_name": "Заявление на академический отпуск",
+ "fields": {"student_name": "Козлова Анна Ивановна", "...": "..."}, "missing": ["course"],
+ "regions": [{"field": "student_name", "kind": null, "quad": [[0.29, 0.50], [0.68, 0.50], [0.68, 0.54], [0.29, 0.55]]}],
+ "sheet": [[0.23, 0.02], [0.53, 0.0], [0.55, 0.96], [0.24, 0.97]], "sheet_share": 0.31,
+ "readable": true, "warnings": [], "seconds": 3.4}
+```
+
+Координаты нормированы к размеру кадра. `kind: "missing"` — место недостающей подписи или печати.
+
+## Роли и профиль
+
+| Запрос | Кто | Действие |
+| --- | --- | --- |
+| `GET/POST/DELETE /me/marks/signature` | Все | Своя подпись (PNG до 2 МБ) |
+| `GET/POST/DELETE /me/marks/seal` | Сотрудник | Печать деканата |
+| `POST /admin/invites` `{"note": "…"}` | Суперадмин | Одноразовая ссылка регистрации сотрудника, действует 7 дней |
+| `DELETE /admin/invites/{prefix}` | Суперадмин | Отозвать приглашение |
+| `GET /admin/users`, `PATCH /admin/users/{id}` `{"role": "staff"}` | Суперадмин | Пользователи и роли |
 
 ## Чат
 

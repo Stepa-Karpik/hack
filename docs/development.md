@@ -6,27 +6,27 @@
 
 | Файл | Для чего |
 | --- | --- |
-| `requirements-app.txt` | **Текущее приложение:** PaddleOCR-VL, веб-сервер, GPU-агент, тесты. Transformers 5.5.4 |
+| `requirements-app.txt` | Веб-приложение, агент, цельная модель, Excel и PDF, тесты. Transformers 5.5.4 |
 | `scripts/unified/requirements-paddle.txt` | Обучение и оценка PaddleOCR-VL (то же ядро плюс `lm-format-enforcer`) |
 | `scripts/unified/requirements.txt` | Исследование Qwen2-VL / Qwen3-VL: Transformers 4.57, bitsandbytes |
-| `requirements.txt`, `requirements.lock.txt` | Прежнее поколение: EasyOCR, Ultralytics, scikit-learn, Streamlit |
+| `requirements.txt`, `requirements.lock.txt` | Конвейер: EasyOCR, Ultralytics, scikit-learn |
 
 Torch ставится первым, из официального индекса PyTorch под нужную версию CUDA или CPU.
 
 ## Тесты
 
 ```bash
-python -m pytest -q          # 561 тест
+python -m pytest -q          # 568 тестов
 python -m pytest -q tests/test_app.py tests/test_assistant.py
 ```
 
 Модели в тестах заменены заглушками (`FakeReader`, подмена `ollama_chat`), поэтому GPU и веса не нужны. Покрыто:
 
-- приложение: регистрация, сессии, загрузка, очередь, проверка `Origin`, смена типа, сверка, одобрение, авто-подтверждение, API-ключи;
-- связь с GPU-агентом и переход на CPU;
+- приложение: регистрация и роли, приглашения, сессии, загрузка, очередь, проверка `Origin`, путь заявки (отправка, рассмотрение, возврат, замена, одобрение), предупреждение и сверка ФИО, подписи и печати профиля, конструктор типов, авто-подтверждение, API-ключи;
+- связь с агентом, ожидание переподключения и резервный CPU-движок;
 - ассистент: контекст, вычисленные факты, проверка привязки, нормализация вида ответа, поток;
 - граф-декодер, привязка полей, layout v1 и v2, проза;
-- прежнее поколение целиком.
+- конвейер: предобработка, извлечение, нормализация, запасные правила, оценка читаемости.
 
 ## Карта кода
 
@@ -64,15 +64,15 @@ python -m pytest -q tests/test_app.py tests/test_assistant.py
 | Файл | |
 | --- | --- |
 | `format_v1.py` | Формат результата, проверка комплектности, ответы по правилам |
-| `service.py`, `http_api.py`, `run_contract.py` | Сервис и HTTP прежнего поколения |
-| `labeled_fields.py`, `crop_recovery.py`, `value_quote_recovery.py`, `mark_guard.py` | Доработки извлечения прежнего поколения |
+| `service.py`, `http_api.py`, `run_contract.py` | Сервис кейса, HTTP-обёртка, прогон набора |
+| `labeled_fields.py`, `crop_recovery.py`, `value_quote_recovery.py`, `mark_guard.py` | Адаптеры извлечения конвейера |
 | `upload_limits.py` | Проверка файла до загрузки модели: формат, мегапиксели, страницы |
 
-### `dekanat/` — библиотека прежнего поколения
+### `dekanat/` — библиотека конвейера
 
 `ocr.py` (EasyOCR и каскад дообученных распознавателей), `preprocessing.py` (перспектива, наклон, свет), `orientation.py`, `extraction.py`, `narrative.py`, `slots.py`, `field_validation.py`, `pdf_text*.py` (текстовый слой PDF), `visual.py` (YOLO и MobileNet), `schema.py`, `reasoning.py`, `synthetic.py`.
 
-### `scripts/*.py` — обучение, оценка и утилиты прежнего поколения
+### `scripts/*.py` — обучение и оценка моделей конвейера
 
 `train_ocr.py`, `train_quote_ocr.py`, `train_detection.py`, `train_visual.py`, `train_fields.py`, `generate_data.py`, `evaluate*.py`, `check_document.py` (CLI одного документа), `serve_api.py` (HTTP web-v1), `build_web.py`.
 
