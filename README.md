@@ -182,6 +182,8 @@ flowchart LR
 
 ## Модели
 
+**Все используемые веса одной папкой:** https://disk.yandex.ru/d/KahaQqovuOt5zQ — `pipeline/` (конвейер: EasyOCR, дообученные распознаватели, YOLOv8n, классификатор полей) и `unified/` (PaddleOCR-VL 1.6, LoRA-адаптер и головы). Раскладка по папкам репозитория — в `README.md` внутри.
+
 | Модель | Что делает | Происхождение | Размер |
 | --- | --- | --- | --- |
 | CRAFT (`craft_mlt_25k`) | Находит строки текста на странице | EasyOCR, используется как есть | 79 МБ |
@@ -242,7 +244,7 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt -r requirements-app.txt
 ```
 
-Для быстрого движка этого достаточно: веса EasyOCR и наши модели лежат в [`models/`](models/README.md).
+Для быстрого движка этого достаточно: веса EasyOCR и наши модели лежат в [`models/`](models/README.md). Все веса также можно скачать одной папкой: https://disk.yandex.ru/d/KahaQqovuOt5zQ.
 
 ### 2. Ассистент (необязательно)
 
